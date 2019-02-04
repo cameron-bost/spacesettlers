@@ -1,0 +1,6 @@
+/bin/
+/build/
+/test/
+/.classpath
+/.project
+/dist/spacesettlers.jar

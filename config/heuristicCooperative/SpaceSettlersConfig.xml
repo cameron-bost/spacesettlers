@@ -59,16 +59,13 @@
 			<teamName>Bost-Atkinson Digital Space Mining</teamName>
 		</BaseConfig>
 		<BaseConfig>
-			<teamName>DoNothingTeam</teamName>
-		</BaseConfig>
-		<BaseConfig>
 			<teamName>RandomClient</teamName>
 		</BaseConfig>
 		<BaseConfig>
 			<teamName>BeaconCollectorTeam</teamName>
 		</BaseConfig>
 		<BaseConfig>
-			<teamName>HumanTeam</teamName>
+			<teamName>DoNothingTeam</teamName>
 		</BaseConfig>
 		<BaseConfig>
 			<teamName>HeuristicMinerTeam</teamName>

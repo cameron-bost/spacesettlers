@@ -22,6 +22,7 @@ import spacesettlers.clients.TeamClient;
 import spacesettlers.graphics.SpacewarGraphics;
 import spacesettlers.objects.AbstractActionableObject;
 import spacesettlers.objects.AbstractObject;
+import spacesettlers.objects.AiCore;
 import spacesettlers.objects.Asteroid;
 import spacesettlers.objects.Base;
 import spacesettlers.objects.Beacon;
@@ -32,12 +33,9 @@ import spacesettlers.simulator.Toroidal2DPhysics;
 import spacesettlers.utilities.Position;
 
 /**
- * Collects nearby asteroids and brings them to the base, picks up beacons as needed for energy.
+ * Based on the PacifistHeuristicAsteroidCollectorTeamClient written by Dr. McGovern
  * 
- * If there is more than one ship, this version happily collects asteroids with as many ships as it
- * has.  it never shoots (it is a pacifist)
- * 
- * @author amy
+ * @author Cameron Bost, Joshua Atkinson
  */
 public class FriendyAgentBDSM extends TeamClient {
 	private boolean debug = false;
@@ -55,7 +53,8 @@ public class FriendyAgentBDSM extends TeamClient {
 	 * Final Variables
 	 */
 	final double LOW_ENERGY_THRESHOLD = 1500; // #P1 - Lowered 2000 -> 1500
-	final double RESOURCE_THRESHOLD = 500;
+	final double RESOURCE_THRESHOLD = 1500;   // #P1 - Raised 500 -> 2000
+	final double BASE_BUYING_DISTANCE = 350; // #P1 - raised 200 -> 350 
 	
 	
 	/**
@@ -109,13 +108,31 @@ public class FriendyAgentBDSM extends TeamClient {
 		// update previous action
 		previousAction = current;
 		
-		// Rule 1. If energy is low, go for beacon
+		// Rule 1. If energy is low, go for nearest energy source
 		if (ship.getEnergy() < LOW_ENERGY_THRESHOLD) {
-			Beacon beacon = pickNearestBeacon(space, ship);
+			AbstractAction newAction = null;
+			// Find energy source
+			AbstractObject energyTarget = findNearestEnergySource(space, ship);
+			if(energyTarget != null) {
+				newAction = new MoveToObjectAction(space, currentPosition, energyTarget);
+				if(energyTarget instanceof Base) {
+					aimingForBase.put(ship.getId(), true);
+				}
+				else {
+					aimingForBase.put(ship.getId(), false);
+				}
+			}
+			else {
+				if(debug) {
+					System.out.println("Energy target returned null");
+				}
+			}
+			return newAction;
+			/*
+			//Beacon beacon = pickNearestBeacon(space, ship);
 			AbstractAction newAction = null;
 			// Rule 1.1 if there is no beacon -> do nothing
 			if (beacon == null) {
-				// TODO: #model If no beacon, go for base instead
 				if(debug){
 					System.out.println("<Action Declaration> - Low energy, no beacons, doing nothing.");
 				}
@@ -127,9 +144,8 @@ public class FriendyAgentBDSM extends TeamClient {
 					System.out.println("<Action Declaration> - Getting Energy "+beacon.getPosition());
 				}
 				newAction = new MoveToObjectAction(space, currentPosition, beacon);
-			}
-			aimingForBase.put(ship.getId(), false);
 			return newAction;
+			}*/
 		}
 
 		// Rule 2. If the ship has enough resources, deposit them
@@ -143,12 +159,14 @@ public class FriendyAgentBDSM extends TeamClient {
 			return newAction;
 		}
 
-		// Rule 3. Aim for asteroid
-		// (unless ship is in process of moving and hasn't just struck the base)
+		// Rule 3. If not doing anything, just finished, or just hit base, then aim for best asteroid
 		if (current == null || current.isMovementFinished(space) || 
 				(justHitBase.containsKey(ship.getId()) && justHitBase.get(ship.getId()))) {
+			// Update model
 			justHitBase.put(ship.getId(), false);			
 			aimingForBase.put(ship.getId(), false);
+			
+			// Get best asteroid
 			Asteroid asteroid = pickHighestValueNearestFreeAsteroid(space, ship);
 
 			AbstractAction newAction = null;
@@ -181,9 +199,66 @@ public class FriendyAgentBDSM extends TeamClient {
 			}
 			return newAction;
 		}
+		if(debug) {
+			System.out.println("<Action Declaration> - Continuing action...");
+		}
 		return ship.getCurrentAction();
 	}
 	
+	/**
+	 * Locates nearest object containing energy. Note that energy sources are bases, beacons, and cores.
+	 * 
+	 * @param space physics model
+	 * @param ship ship currently acting
+	 * @return nearest energy source
+	 */
+	private AbstractObject findNearestEnergySource(Toroidal2DPhysics space, Ship ship) {
+		double minDistance = Double.MAX_VALUE;
+		AbstractObject bestObject = null;
+		
+		Base minBase = findNearestBase(space, ship);
+		double minBaseDist = Double.MAX_VALUE;
+		if(minBase != null) {
+			minBaseDist = space.findShortestDistance(ship.getPosition(), minBase.getPosition());
+		}
+		if(debug) {
+			System.out.println("Min Base: "+ (minBase == null ? "null" : minBase.getId()+", Dist: "+minBaseDist));
+		}
+		
+		AiCore minCore = findNearestAiCore(space, ship);
+		double minCoreDist = Double.MAX_VALUE;
+		if(minCore != null) {
+			minCoreDist = space.findShortestDistance(ship.getPosition(), minCore.getPosition());
+		}
+		if(debug) {
+			System.out.println("Min Core: "+ (minCore == null ? "null" : minCore.getId()+", Dist: "+minCoreDist));
+		}
+		
+		Beacon minBeacon = findNearestBeacon(space, ship);
+		double minBeaconDist = Double.MAX_VALUE;
+		if(minBeacon != null) {
+			minBeaconDist = space.findShortestDistance(ship.getPosition(), minBeacon.getPosition());
+		}
+		if(debug) {
+			System.out.println("Min Beacon: "+ (minBeacon == null ? "null" : minBeacon.getId()+", Dist: "+minBeaconDist));
+		}
+		
+		minDistance = minBaseDist;
+		if(minCoreDist < minDistance) {
+			minDistance = minCoreDist;
+			bestObject = minCore;
+		}
+		if(minBeaconDist < minDistance) {
+			minDistance = minBeaconDist;
+			bestObject = minBeacon;
+		}
+		
+		if(debug && bestObject != null) {
+			System.out.println("Targetting energy source " + bestObject.getId());
+		}
+		return bestObject;
+	}
+
 	private Asteroid pickNearestFreeAsteroid(Toroidal2DPhysics space, Ship ship) {
         Set<Asteroid> asteroids = space.getAsteroids();
         Asteroid bestAsteroid = null;
@@ -226,6 +301,29 @@ public class FriendyAgentBDSM extends TeamClient {
 		}
 		return nearestBase;
 	}
+	
+	/**
+	 * Find the AI core nearest to this ship
+	 * 
+	 * @param space
+	 * @param ship
+	 * @return
+	 */
+	private AiCore findNearestAiCore(Toroidal2DPhysics space, Ship ship) {
+		double minDistance = Double.MAX_VALUE;
+		AiCore nearestCore = null;
+
+		for (AiCore core : space.getCores()) {
+			if (core.getTeamName().equalsIgnoreCase(ship.getTeamName())) {
+				double dist = space.findShortestDistance(ship.getPosition(), core.getPosition());
+				if (dist < minDistance) {
+					minDistance = dist;
+					nearestCore = core;
+				}
+			}
+		}
+		return nearestCore;
+	}
 
 	/**
 	 * Returns the asteroid of highest value that isn't already being chased by this team
@@ -262,7 +360,7 @@ public class FriendyAgentBDSM extends TeamClient {
 	 * @param ship
 	 * @return
 	 */
-	private Beacon pickNearestBeacon(Toroidal2DPhysics space, Ship ship) {
+	private Beacon findNearestBeacon(Toroidal2DPhysics space, Ship ship) {
 		// get the current beacons
 		Set<Beacon> beacons = space.getBeacons();
 
@@ -375,9 +473,10 @@ public class FriendyAgentBDSM extends TeamClient {
 			PurchaseCosts purchaseCosts) {
 
 		HashMap<UUID, PurchaseTypes> purchases = new HashMap<UUID, PurchaseTypes>();
-		double BASE_BUYING_DISTANCE = 200;
+		
+		// TODO: Determine if base is impossible to purchase, add heuristic to purchase anyway
 		boolean bought_base = false;
-
+		
 		if (purchaseCosts.canAfford(PurchaseTypes.BASE, resourcesAvailable)) {
 			for (AbstractActionableObject actionableObject : actionableObjects) {
 				if (actionableObject instanceof Ship) {
@@ -404,37 +503,29 @@ public class FriendyAgentBDSM extends TeamClient {
 			}		
 		} 
 		
-		// can I buy a ship?
-		if (purchaseCosts.canAfford(PurchaseTypes.SHIP, resourcesAvailable) && bought_base == false) {
+		// Ship Purchase
+		if (bought_base == false && purchaseCosts.canAfford(PurchaseTypes.SHIP, resourcesAvailable)) {
 			for (AbstractActionableObject actionableObject : actionableObjects) {
+				// TODO: What if we chose a base to spawn our ship at for a reason, instead of the first available one?
 				if (actionableObject instanceof Base) {
 					Base base = (Base) actionableObject;
-					
 					purchases.put(base.getId(), PurchaseTypes.SHIP);
 					break;
 				}
-
 			}
-
 		}
-
-
 		return purchases;
 	}
 
 	/**
-	 * The pacifist asteroid collector doesn't use power ups 
+	 * Unused in cooperative mode
 	 * @param space
 	 * @param actionableObjects
-	 * @return
+	 * @return Empty set
 	 */
 	@Override
 	public Map<UUID, SpaceSettlersPowerupEnum> getPowerups(Toroidal2DPhysics space,
 			Set<AbstractActionableObject> actionableObjects) {
-		HashMap<UUID, SpaceSettlersPowerupEnum> powerUps = new HashMap<UUID, SpaceSettlersPowerupEnum>();
-
-		
-		return powerUps;
+		return new HashMap<UUID, SpaceSettlersPowerupEnum>();
 	}
-
 }

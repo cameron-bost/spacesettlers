@@ -40,6 +40,7 @@ import spacesettlers.utilities.Position;
  * @author amy
  */
 public class FriendyAgentBDSM extends TeamClient {
+	private boolean debug = false;
 	HashMap <UUID, Ship> asteroidToShipMap;
 	HashMap <UUID, Boolean> aimingForBase;
 	HashMap <UUID, Boolean> justHitBase;
@@ -48,14 +49,36 @@ public class FriendyAgentBDSM extends TeamClient {
 	 * Example knowledge used to show how to load in/save out to files for learning
 	 */
 	ExampleKnowledge myKnowledge;
+	
+	
+	/**
+	 * Final Variables
+	 */
+	final double LOW_ENERGY_THRESHOLD = 1500; // #P1 - Lowered 2000 -> 1500
+	final double RESOURCE_THRESHOLD = 500;
+	
+	
+	/**
+	 * State Variables
+	 */
+	AbstractAction previousAction = null;
 
 	/**
 	 * Assigns ships to asteroids and beacons, as described above
 	 */
+	int stepCount = 0;
 	public Map<UUID, AbstractAction> getMovementStart(Toroidal2DPhysics space,
 			Set<AbstractActionableObject> actionableObjects) {
 		HashMap<UUID, AbstractAction> actions = new HashMap<UUID, AbstractAction>();
-
+		
+		// DEBUG: Prints all ship positions at start of timestep processing
+		if(debug) {
+			System.out.println("Step: "+stepCount);
+			for(Beacon s: space.getBeacons()) {
+				System.out.println(s.getPosition()+"-"+s.getId()+": ("+s.getPosition().getX()+","+s.getPosition().getY()+")");
+			}
+		}
+		
 		// loop through each ship
 		for (AbstractObject actionable :  actionableObjects) {
 			if (actionable instanceof Ship) {
@@ -83,30 +106,45 @@ public class FriendyAgentBDSM extends TeamClient {
 			Ship ship) {
 		AbstractAction current = ship.getCurrentAction();
 		Position currentPosition = ship.getPosition();
-
-		// aim for a beacon if there isn't enough energy
-		if (ship.getEnergy() < 2000) {
+		// update previous action
+		previousAction = current;
+		
+		// Rule 1. If energy is low, go for beacon
+		if (ship.getEnergy() < LOW_ENERGY_THRESHOLD) {
 			Beacon beacon = pickNearestBeacon(space, ship);
 			AbstractAction newAction = null;
-			// if there is no beacon, then just skip a turn
+			// Rule 1.1 if there is no beacon -> do nothing
 			if (beacon == null) {
+				// TODO: #model If no beacon, go for base instead
+				if(debug){
+					System.out.println("<Action Declaration> - Low energy, no beacons, doing nothing.");
+				}
 				newAction = new DoNothingAction();
-			} else {
+			}
+			// Rule 1.2 if there is a beacon -> go to beacon
+			else {
+				if(debug){
+					System.out.println("<Action Declaration> - Getting Energy "+beacon.getPosition());
+				}
 				newAction = new MoveToObjectAction(space, currentPosition, beacon);
 			}
 			aimingForBase.put(ship.getId(), false);
 			return newAction;
 		}
 
-		// if the ship has enough resourcesAvailable, take it back to base
-		if (ship.getResources().getTotal() > 500) {
+		// Rule 2. If the ship has enough resources, deposit them
+		if (ship.getResources().getTotal() > RESOURCE_THRESHOLD) {
 			Base base = findNearestBase(space, ship);
 			AbstractAction newAction = new MoveToObjectAction(space, currentPosition, base);
 			aimingForBase.put(ship.getId(), true);
+			if(debug){
+				System.out.println("<Action Declaration> - Deposit (" + ship.getResources().getTotal()+")");
+			}
 			return newAction;
 		}
 
-		// otherwise aim for the asteroid
+		// Rule 3. Aim for asteroid
+		// (unless ship is in process of moving and hasn't just struck the base)
 		if (current == null || current.isMovementFinished(space) || 
 				(justHitBase.containsKey(ship.getId()) && justHitBase.get(ship.getId()))) {
 			justHitBase.put(ship.getId(), false);			
@@ -132,12 +170,37 @@ public class FriendyAgentBDSM extends TeamClient {
 				asteroidToShipMap.put(asteroid.getId(), ship);
 				newAction = new MoveToObjectAction(space, currentPosition, asteroid, 
 						asteroid.getPosition().getTranslationalVelocity());
+				if(debug){
+					System.out.println("<Action Declaration> - Chasing asteroid");
+					System.out.println("<Velocity Check> - "+ship.getPosition().getTranslationalVelocity());
+				}
+				return newAction;
 			}
-			
+			if(debug){
+				System.out.println("<Action Declaration> - No asteroid found to chase."); 
+			}
 			return newAction;
-		} 
-		
+		}
 		return ship.getCurrentAction();
+	}
+	
+	private Asteroid pickNearestFreeAsteroid(Toroidal2DPhysics space, Ship ship) {
+        Set<Asteroid> asteroids = space.getAsteroids();
+        Asteroid bestAsteroid = null;
+        double minDistance = Double.MAX_VALUE;
+        for (Asteroid asteroid : asteroids) {
+            if (!asteroidToShipMap.containsKey(asteroid.getId())) {
+                if (asteroid.isMineable()) {
+                    double dist = space.findShortestDistance(asteroid.getPosition(), ship.getPosition());
+                    if (dist < minDistance) {
+                        //System.out.println("Considering asteroid " + asteroid.getId() + " as a best one");
+                        bestAsteroid = asteroid;
+                        minDistance = dist;
+                    }
+                }
+            }
+        }
+        return bestAsteroid;
 	}
 
 
@@ -241,7 +304,9 @@ public class FriendyAgentBDSM extends TeamClient {
 				Ship ship = (Ship) space.getObjectById(shipId);
 				if (ship.getResources().getTotal() == 0 ) {
 					// we hit the base (or died, either way, we are not aiming for base now)
-					//System.out.println("Hit the base and dropped off resources");
+					if(debug) {
+						System.out.println("<"+shipId.toString()+"> - Hit the base and dropped off resources");
+					}
 					aimingForBase.put(shipId, false);
 					justHitBase.put(shipId, true);
 				}
@@ -290,14 +355,12 @@ public class FriendyAgentBDSM extends TeamClient {
 			// the error will happen the first time you run
 			myKnowledge = new ExampleKnowledge();
 		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
 			myKnowledge = new ExampleKnowledge();
 		}
 	}
 
 	@Override
 	public Set<SpacewarGraphics> getGraphics() {
-		// TODO Auto-generated method stub
 		return null;
 	}
 

@@ -159,6 +159,51 @@ public class BDSMFriendyModelBasedAgent extends TeamClient {
 		AbstractAction currentAction = ship.getCurrentAction();
 		AbstractAction nextAction = null;
 		
+		/**
+		 * Rule: If running, check distance to dangerous object has increased significantly, then resume.
+		 */
+		if(state.isRunning) {
+			AbstractObject runningFromObj = space.getObjectById(state.runningFrom);
+			if(runningFromObj != null) {
+				double dangerDistance = space.findShortestDistance(ship.getPosition(), runningFromObj.getPosition());
+				if(dangerDistance >= runningFromObj.getRadius()*2) {
+					state.isRunning = false;
+				}
+			}
+			else {
+				state.isRunning = false;
+			}
+			// If no longer running, resume previous task.
+			if(!state.isRunning) {
+				state.runningFrom = NO_TARGET;
+				if(debug) {
+					System.out.println("<Action Declaration> - Resuming previous action...");
+				}
+				currentAction = state.previousAction;
+			}
+		}
+		
+		/**
+		 * Rule: If collided with object, run away
+		 */
+		AbstractObject collidedWith = getCollision(space, ship);
+		if(collidedWith != null) {
+			if(debug) {
+				System.out.println("<Collision Report> - Ship "+ship.getId()+" with "+collidedWith.getClass().getName()+": "+collidedWith.getId());
+			}
+			Position targetPosition = getRunawayPosition(space, ship, collidedWith);
+			Vector2D targetVelocity = collidedWith.getPosition().getTranslationalVelocity();
+			targetPosition.setTranslationalVelocity(targetVelocity);
+			MoveAction runawayAction = new MoveAction(space, ship.getPosition(), targetPosition, targetVelocity);
+			if(debug) {
+				System.out.println("<Runaway Action> - Running to: "+targetPosition);
+			}
+			state.isRunning = true;
+			state.runningFrom = collidedWith.getId();
+			state.previousAction = currentAction;
+			return runawayAction;
+		}
+		
 		// Rule: If energy is low, go for nearest energy source
 		if (ship.getEnergy() < LOW_ENERGY_THRESHOLD) {
 			return getNewObtainEnergyAction(space, ship);
@@ -193,6 +238,66 @@ public class BDSMFriendyModelBasedAgent extends TeamClient {
 			state.previousAction = currentAction;
 			return currentAction;
 		}
+	}
+	
+	/**
+	 * Finds a position suitable for running away from an object.
+	 * 1. Finds a 2D vector perpendicular to the distance vector between the two objects.
+	 * 2. Multiplies the vector by 1.5 * radius of the collided object.
+	 * @param space physics model
+	 * @param running Object attempting to flee
+	 * @param attacker Aggressor
+	 * @return 2D vector suitable for running away from collidedWith
+	 */
+	private Position getRunawayPosition(Toroidal2DPhysics space, AbstractObject running, AbstractObject attacker) {
+		Vector2D distanceV = space.findShortestDistanceVector(running.getPosition(), attacker.getPosition());
+		// Construct runaway unit vector
+		double v2x = 1;
+		double v2y = (-1) * v2x * distanceV.getXValue() / distanceV.getYValue();
+		v2x /= distanceV.getMagnitude();
+		v2y /= distanceV.getMagnitude();
+		Vector2D runawayV = new Vector2D(v2x * attacker.getRadius(), v2y * attacker.getRadius());
+		// Determine runaway position
+		Position runningCurr = running.getPosition();
+		Position runawayDestination = new Position(runningCurr.getX()+runawayV.getXValue(), runningCurr.getY()+runawayV.getYValue());
+		return runawayDestination;
+	}
+
+	/**
+	 * Detects if an object has collided with this ship.
+	 * @param space physics model
+	 * @param ship Ship to check for collisions
+	 * @return Object that ship collided with, or null if no collision
+	 */
+	private AbstractObject getCollision(Toroidal2DPhysics space, Ship ship) {
+		AbstractObject collision = null;
+		ShipState state = shipStateMap.get(ship.getId());
+		double energyDiff = state.energyDiff;
+		// Collision has happened, determine closest object as likely source
+		if(energyDiff < -1*MAX_ACCELERATION) {
+			double minDist = Double.MAX_VALUE;
+			for(AbstractObject object: space.getAllObjects()) {
+				// Ignored collisions include consumable items, ourselves, and dead things
+				if(object.getId().equals(ship.getId()) || !object.isAlive() 
+						|| object instanceof Missile || object instanceof Beacon
+						|| object instanceof AiCore 
+						|| (object instanceof Asteroid && ((Asteroid) object).isMineable())) {
+					continue;
+				}
+				else {
+					double dist = space.findShortestDistance(object.getPosition(), ship.getPosition());
+					if(dist < minDist) {
+						minDist = dist;
+						collision = object;
+					}
+				}
+			}
+			if(debug) {
+				String typeName = AgentUtils.getAbstractType(collision);
+				System.out.println("<Collision Detection> - Hit ("+typeName+") @ "+minDist);
+			}
+		}
+		return collision;
 	}
 
 	/**

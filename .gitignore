@@ -3,4 +3,7 @@
 /test/
 /.classpath
 /.project
-/dist/spacesettlers.jar
+*_test.java
+*_test.xml
+*.html
+src/foo.xml.gz

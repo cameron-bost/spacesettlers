@@ -127,24 +127,6 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 				}
 			}
 			return newAction;
-			/*
-			//Beacon beacon = pickNearestBeacon(space, ship);
-			AbstractAction newAction = null;
-			// Rule 1.1 if there is no beacon -> do nothing
-			if (beacon == null) {
-				if(debug){
-					System.out.println("<Action Declaration> - Low energy, no beacons, doing nothing.");
-				}
-				newAction = new DoNothingAction();
-			}
-			// Rule 1.2 if there is a beacon -> go to beacon
-			else {
-				if(debug){
-					System.out.println("<Action Declaration> - Getting Energy "+beacon.getPosition());
-				}
-				newAction = new MoveToObjectAction(space, currentPosition, beacon);
-			return newAction;
-			}*/
 		}
 
 		// Rule 2. If the ship has enough resources, deposit them
@@ -170,19 +152,6 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 
 			AbstractAction newAction = null;
 
-			/*if (asteroid == null) {
-				// there is no asteroid available so collect a beacon
-				Beacon beacon = pickNearestBeacon(space, ship);
-				// if there is no beacon, then just skip a turn
-				if (beacon == null) {
-					newAction = new DoNothingAction();
-				} else {
-					newAction = new MoveToObjectAction(space, currentPosition, beacon);
-				}
-			} else {
-				asteroidToShipMap.put(asteroid.getId(), ship);
-				newAction = new MoveToObjectAction(space, currentPosition, asteroid);
-			}*/
 			if (asteroid != null) {
 				asteroidToShipMap.put(asteroid.getId(), ship);
 				newAction = new MoveToObjectAction(space, currentPosition, asteroid, 
@@ -204,15 +173,24 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 		return ship.getCurrentAction();
 	}
 	
+	/**
+	 * This function will find the closest valued asteroid. It does not determine by the amount that the asteroid is worth.
+	 * 
+	 * @return
+	 */
 	private Asteroid pickNearestFreeAsteroid(Toroidal2DPhysics space, Ship ship) {
+		/*
+		 * this will gather all the resources that are currently available on the map and stores them in variable to use. This will allow us to search each
+		 * asteroid individually.
+		 */
         Set<Asteroid> asteroids = space.getAsteroids();
         Asteroid bestAsteroid = null;
-        double minDistance = Double.MAX_VALUE;
+        double minDistance = Double.MAX_VALUE; //declares value for min distance.
         for (Asteroid asteroid : asteroids) {
             if (!asteroidToShipMap.containsKey(asteroid.getId())) {
-                if (asteroid.isMineable()) {
-                    double dist = space.findShortestDistance(asteroid.getPosition(), ship.getPosition());
-                    if (dist < minDistance) {
+                if (asteroid.isMineable()) { // determines if the asteroid is mineable
+                    double dist = space.findShortestDistance(asteroid.getPosition(), ship.getPosition());// finds the distance between the asteroid and the ship.
+                    if (dist < minDistance) { // Will determine if the new distance is less then the previous distance.
                         //System.out.println("Considering asteroid " + asteroid.getId() + " as a best one");
                         bestAsteroid = asteroid;
                         minDistance = dist;
@@ -224,21 +202,24 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 	}
 	
 	/**
-	 * Returns the asteroid of highest value that isn't already being chased by this team
+	 * This function will find the highest valued asteroid. It will determine the best value target by its distance and value.
 	 * 
 	 * @return
 	 */
 	private Asteroid pickHighestValueNearestFreeAsteroid(Toroidal2DPhysics space, Ship ship) {
+		/*
+		 * this will gather all the resources that are currently available on the map and stores them in variable to use. This will allow us to search each
+		 * asteroid individually.
+		 */
 		Set<Asteroid> asteroids = space.getAsteroids();
 		int bestMoney = Integer.MIN_VALUE;
 		Asteroid bestAsteroid = null;
 		double minDistance = Double.MAX_VALUE;
-
-		for (Asteroid asteroid : asteroids) {
-			if (!asteroidToShipMap.containsKey(asteroid.getId())) {
-				if (asteroid.isMineable() && asteroid.getResources().getTotal() > bestMoney) {
-					double dist = space.findShortestDistance(asteroid.getPosition(), ship.getPosition());
-					if (dist < minDistance) {
+		for (Asteroid asteroid : asteroids) { // This will cycle each asteroid
+			if (!asteroidToShipMap.containsKey(asteroid.getId())) { 
+				if (asteroid.isMineable() && asteroid.getResources().getTotal() > bestMoney) { // checks to make sure that we are only searching mineable asteroids and the asteroids is higher then a previous asteroid.
+					double dist = space.findShortestDistance(asteroid.getPosition(), ship.getPosition()); // finds the distance between the asteroid and the ship.
+					if (dist < minDistance) { // Will determine if the new distance is less then the previous distance.
 						bestMoney = asteroid.getResources().getTotal();
 						//System.out.println("Considering asteroid " + asteroid.getId() + " as a best one");
 						bestAsteroid = asteroid;

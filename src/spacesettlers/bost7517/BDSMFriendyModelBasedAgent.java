@@ -14,6 +14,7 @@ import com.thoughtworks.xstream.XStreamException;
 
 import spacesettlers.actions.AbstractAction;
 import spacesettlers.actions.DoNothingAction;
+import spacesettlers.actions.MoveAction;
 import spacesettlers.actions.MoveToObjectAction;
 import spacesettlers.actions.PurchaseCosts;
 import spacesettlers.actions.PurchaseTypes;
@@ -22,13 +23,17 @@ import spacesettlers.clients.TeamClient;
 import spacesettlers.graphics.SpacewarGraphics;
 import spacesettlers.objects.AbstractActionableObject;
 import spacesettlers.objects.AbstractObject;
+import spacesettlers.objects.AiCore;
 import spacesettlers.objects.Asteroid;
 import spacesettlers.objects.Base;
+import spacesettlers.objects.Beacon;
 import spacesettlers.objects.Ship;
 import spacesettlers.objects.powerups.SpaceSettlersPowerupEnum;
 import spacesettlers.objects.resources.ResourcePile;
+import spacesettlers.objects.weapons.Missile;
 import spacesettlers.simulator.Toroidal2DPhysics;
 import spacesettlers.utilities.Position;
+import spacesettlers.utilities.Vector2D;
 
 /**
  * A model-based reflex agent capable of playing spacesettlers, the main project in CS 5013 - Artificial Intelligence.
@@ -51,6 +56,14 @@ public class BDSMFriendyModelBasedAgent extends TeamClient {
 		UUID target = NO_TARGET;
 		boolean aimingForBase = false;
 		boolean justHitBase = false;
+		/**
+		 * Collision Avoidance
+		 */
+		double energy = 0;
+		double energyDiff = 0;
+		boolean isRunning = false;
+		UUID runningFrom = NO_TARGET;
+		AbstractAction previousAction = null;
 	}
 	
 	/**
@@ -64,11 +77,16 @@ public class BDSMFriendyModelBasedAgent extends TeamClient {
 	/**
 	 * Constants
 	 */
+	/**Energy amount at which ship should seek out energy source*/
 	final double LOW_ENERGY_THRESHOLD = 1500; // #P1 - Lowered 2000 -> 1500
-	final double RESOURCE_THRESHOLD = 1500;   // #P1 - Raised 500 -> 2000
+	/**Amount of resources at which ship will head home*/
+	final double RESOURCE_THRESHOLD = 2000;   // #P1 - Raised 500 -> 2000
+	/**Distance a ship should be from a base before purchasing (desired, not required)*/
 	final double BASE_BUYING_DISTANCE = 350; // #P1 - raised 200 -> 350 
-	final UUID NO_TARGET = new UUID(0,0);
-	
+	/**Max acceleration*/
+	final double MAX_ACCELERATION = 15.0;
+	/**Placeholder constant for having no target*/
+	final UUID NO_TARGET = new UUID(0, 0);
 	
 	/**
 	 * Model Variables (from heuristic)
@@ -90,6 +108,23 @@ public class BDSMFriendyModelBasedAgent extends TeamClient {
 	@Override
 	public Map<UUID, AbstractAction> getMovementStart(Toroidal2DPhysics space,
 			Set<AbstractActionableObject> actionableObjects) {
+		// Update observation variables
+		for (AbstractObject actionable :  actionableObjects) {
+			// Ship actions
+			if (actionable instanceof Ship) {
+				Ship ship = (Ship) actionable;
+				if(!shipStateMap.containsKey(ship.getId())) {
+					shipStateMap.put(ship.getId(), new ShipState());
+				}
+				ShipState state = shipStateMap.get(ship.getId());
+				double prevEnergy = state.energy;
+				double currentEnergy = ship.getEnergy();
+				double diff = (prevEnergy > 0 ? ship.getEnergy()-prevEnergy : 0);
+				state.energy = currentEnergy;
+				state.energyDiff = diff;
+			}
+		}
+		
 		// Determine actions to be performed by ships and bases
 		HashMap<UUID, AbstractAction> actions = new HashMap<UUID, AbstractAction>();
 		for (AbstractObject actionable :  actionableObjects) {
@@ -135,6 +170,7 @@ public class BDSMFriendyModelBasedAgent extends TeamClient {
 				return ship.getCurrentAction();
 			}
 			nextAction = getNewDepositResourcesAction(space, ship);
+			state.previousAction = nextAction;
 			return nextAction;
 		}
 		
@@ -144,6 +180,7 @@ public class BDSMFriendyModelBasedAgent extends TeamClient {
 				continueStepTracker = 0;
 			}
 			nextAction = getNewPursueTargetAction(space, ship);
+			state.previousAction = nextAction;
 			return nextAction;
 		}
 		/**
@@ -153,6 +190,7 @@ public class BDSMFriendyModelBasedAgent extends TeamClient {
 			if(debug && (++continueStepTracker % 100 == 0)) {
 				System.out.println("<Action Continuation> Continuing action..."+continueStepTracker);
 			}
+			state.previousAction = currentAction;
 			return currentAction;
 		}
 	}
@@ -245,6 +283,7 @@ public class BDSMFriendyModelBasedAgent extends TeamClient {
 			newAction = new DoNothingAction();
 			state.target = NO_TARGET;
 		}
+		state.previousAction = newAction;
 		return newAction;
 	}
 
@@ -299,7 +338,13 @@ public class BDSMFriendyModelBasedAgent extends TeamClient {
 		}
 
 		for (Asteroid asteroid : finishedAsteroids) {
+			Ship assailant = asteroidToShipMap.get(asteroid.getId());
+			ShipState state = shipStateMap.get(assailant.getId());
 			asteroidToShipMap.remove(asteroid.getId());
+			// Only remove from target map if asteroid is dead
+			if(asteroid != null && !asteroid.isAlive()) {
+				state.target = NO_TARGET;
+			}
 		}
 		
 		/**
@@ -317,6 +362,11 @@ public class BDSMFriendyModelBasedAgent extends TeamClient {
 					state.aimingForBase = false;
 					state.justHitBase = true;
 				}
+			}
+			// If target is dead, remove objective
+			if (!state.target.equals(NO_TARGET) && !space.getObjectById(state.target).isAlive()) {
+				state.target = NO_TARGET;
+				state.previousAction = null;
 			}
 		}
 	}

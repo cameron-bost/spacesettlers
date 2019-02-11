@@ -24,7 +24,6 @@ import spacesettlers.objects.AbstractActionableObject;
 import spacesettlers.objects.AbstractObject;
 import spacesettlers.objects.Asteroid;
 import spacesettlers.objects.Base;
-import spacesettlers.objects.Beacon;
 import spacesettlers.objects.Ship;
 import spacesettlers.objects.powerups.SpaceSettlersPowerupEnum;
 import spacesettlers.objects.resources.ResourcePile;
@@ -32,201 +31,228 @@ import spacesettlers.simulator.Toroidal2DPhysics;
 import spacesettlers.utilities.Position;
 
 /**
- * Based on the PacifistHeuristicAsteroidCollectorTeamClient written by Dr. McGovern
+ * A model-based reflex agent capable of playing spacesettlers, the main project in CS 5013 - Artificial Intelligence.
+ * Included rules for this agent are:
+ * If no previous path currently being followed, find new path:
+ * 	If energy is low, go for energy. 
+ * 	Else if ship is full of resources, go to base. 
+ * 	Else choose target asteroid.
+ * else follow previous path.
  * 
- * @author Cameron Bost, Joshua Atkinson
+ * @author Cameron Bost
+ * @version 0.1
  */
 public class BDSMFriendyModelBasedAgent extends TeamClient {
-	private boolean debug = false;
-	HashMap <UUID, Ship> asteroidToShipMap;
-	HashMap <UUID, Boolean> aimingForBase;
-	HashMap <UUID, Boolean> justHitBase;
 	
+	class ShipState{
+		/**
+		 * Basic Properties
+		 */
+		UUID target = NO_TARGET;
+		boolean aimingForBase = false;
+		boolean justHitBase = false;
+	}
+	
+	/**
+	 * Dev variables
+	 */
+	/**Debug mode, for verbose logging*/
+	private boolean debug = true;
+	/**Used to count number of time-steps something has occurred.*/
+	private int continueStepTracker = 0;
+	
+	/**
+	 * Constants
+	 */
+	final double LOW_ENERGY_THRESHOLD = 1500; // #P1 - Lowered 2000 -> 1500
+	final double RESOURCE_THRESHOLD = 1500;   // #P1 - Raised 500 -> 2000
+	final double BASE_BUYING_DISTANCE = 350; // #P1 - raised 200 -> 350 
+	final UUID NO_TARGET = new UUID(0,0);
+	
+	
+	/**
+	 * Model Variables (from heuristic)
+	 */
+	/**Tracks which asteroids are being targeted*/
+	private HashMap <UUID, Ship> asteroidToShipMap;
+
+	/**
+	 * Model Variables (new)
+	 */
+	/**Map of ships to their state objects*/
+	private HashMap<UUID, ShipState> shipStateMap;
+
 	/**
 	 * Example knowledge used to show how to load in/save out to files for learning
 	 */
 	ExampleKnowledge myKnowledge;
 	
-	
-	/**
-	 * Final Variables
-	 */
-	final double LOW_ENERGY_THRESHOLD = 1500; // #P1 - Lowered 2000 -> 1500
-	final double RESOURCE_THRESHOLD = 1500;   // #P1 - Raised 500 -> 2000
-	final double BASE_BUYING_DISTANCE = 350; // #P1 - raised 200 -> 350 
-	
-	
-	/**
-	 * State Variables
-	 */
-	AbstractAction previousAction = null;
-
-	/**
-	 * Assigns ships to asteroids and beacons, as described above
-	 */
-	int stepCount = 0;
+	@Override
 	public Map<UUID, AbstractAction> getMovementStart(Toroidal2DPhysics space,
 			Set<AbstractActionableObject> actionableObjects) {
+		// Determine actions to be performed by ships and bases
 		HashMap<UUID, AbstractAction> actions = new HashMap<UUID, AbstractAction>();
-		
-		// DEBUG: Prints all ship positions at start of timestep processing
-		if(debug) {
-			System.out.println("Step: "+stepCount);
-			for(Beacon s: space.getBeacons()) {
-				System.out.println(s.getPosition()+"-"+s.getId()+": ("+s.getPosition().getX()+","+s.getPosition().getY()+")");
-			}
-		}
-		
-		// loop through each ship
 		for (AbstractObject actionable :  actionableObjects) {
+			// Ship actions
 			if (actionable instanceof Ship) {
 				Ship ship = (Ship) actionable;
-
-				AbstractAction action;
-				action = getAsteroidCollectorAction(space, ship);
-				actions.put(ship.getId(), action);
-				
-			} else {
-				// it is a base.  Heuristically decide when to use the shield (TODO)
-				actions.put(actionable.getId(), new DoNothingAction());
+				actions.put(ship.getId(), getBDSMShipAction(space, ship));
+			} 
+			// Base actions
+			else if(actionable instanceof Base){
+				Base base = (Base) actionable;
+				actions.put(base.getId(), getBDSMBaseAction(space, base));
 			}
-		} 
+		}
 		return actions;
 	}
-	
+
 	/**
-	 * Gets the action for the asteroid collecting ship
-	 * @param space
-	 * @param ship
-	 * @return
+	 * Determines the best action for this ship.
+	 * 
+	 * @param space Physics model
+	 * @param ship Ship being observed
+	 * @return Action for this ship to take
 	 */
-	private AbstractAction getAsteroidCollectorAction(Toroidal2DPhysics space,
-			Ship ship) {
-		AbstractAction current = ship.getCurrentAction();
-		Position currentPosition = ship.getPosition();
-		// update previous action
-		previousAction = current;
+	private AbstractAction getBDSMShipAction(Toroidal2DPhysics space, Ship ship) {
 		
-		// Rule 1. If energy is low, go for nearest energy source
+		if(!shipStateMap.containsKey(ship.getId())) {
+			shipStateMap.put(ship.getId(), new ShipState());
+		}
+		ShipState state = shipStateMap.get(ship.getId());
+		
+		AbstractAction currentAction = ship.getCurrentAction();
+		AbstractAction nextAction = null;
+		
+		// Rule: If energy is low, go for nearest energy source
 		if (ship.getEnergy() < LOW_ENERGY_THRESHOLD) {
-			AbstractAction newAction = null;
-			// Find energy source
-			AbstractObject energyTarget = AgentUtils.findNearestEnergySource(space, ship);
-			if(energyTarget != null) {
-				newAction = new MoveToObjectAction(space, currentPosition, energyTarget);
-				if(energyTarget instanceof Base) {
-					aimingForBase.put(ship.getId(), true);
-				}
-				else {
-					aimingForBase.put(ship.getId(), false);
-				}
-			}
-			else {
-				if(debug) {
-					System.out.println("Energy target returned null");
-				}
-			}
-			return newAction;
-			/*
-			//Beacon beacon = pickNearestBeacon(space, ship);
-			AbstractAction newAction = null;
-			// Rule 1.1 if there is no beacon -> do nothing
-			if (beacon == null) {
-				if(debug){
-					System.out.println("<Action Declaration> - Low energy, no beacons, doing nothing.");
-				}
-				newAction = new DoNothingAction();
-			}
-			// Rule 1.2 if there is a beacon -> go to beacon
-			else {
-				if(debug){
-					System.out.println("<Action Declaration> - Getting Energy "+beacon.getPosition());
-				}
-				newAction = new MoveToObjectAction(space, currentPosition, beacon);
-			return newAction;
-			}*/
+			return getNewObtainEnergyAction(space, ship);
 		}
-
-		// Rule 2. If the ship has enough resources, deposit them
+		
+		// Rule: If the ship has enough resources, deposit them
 		if (ship.getResources().getTotal() > RESOURCE_THRESHOLD) {
-			Base base = AgentUtils.findNearestBase(space, ship);
-			AbstractAction newAction = new MoveToObjectAction(space, currentPosition, base);
-			aimingForBase.put(ship.getId(), true);
-			if(debug){
-				System.out.println("<Action Declaration> - Deposit (" + ship.getResources().getTotal()+")");
+			if(state.aimingForBase) {
+				return ship.getCurrentAction();
+			}
+			nextAction = getNewDepositResourcesAction(space, ship);
+			return nextAction;
+		}
+		
+		// Rule: If not doing anything, just finished, or just hit base, then get new target
+		if (currentAction == null || currentAction.isMovementFinished(space) || state.justHitBase || !space.getObjectById(state.target).isAlive()) {
+			if(debug) {
+				continueStepTracker = 0;
+			}
+			nextAction = getNewPursueTargetAction(space, ship);
+			return nextAction;
+		}
+		/**
+		 * Default: If we are currently pursuing something and have not just hit the base
+		 */
+		else {
+			if(debug && (++continueStepTracker % 100 == 0)) {
+				System.out.println("<Action Continuation> Continuing action..."+continueStepTracker);
+			}
+			return currentAction;
+		}
+	}
+
+	/**
+	 * Obtains a new target for the ship.
+	 * 
+	 * @param space physics model
+	 * @param ship ship to perform action
+	 * @return movement action for pursuing a target
+	 */
+	private AbstractAction getNewPursueTargetAction(Toroidal2DPhysics space, Ship ship) {
+		// Update model
+		ShipState state = shipStateMap.get(ship.getId());
+		state.justHitBase = false;
+		state.aimingForBase = false;
+		
+		UUID currentTarget = state.target;
+		
+		// Get best asteroid
+		Asteroid targetAsteroid = pickHighestValueNearestFreeAsteroid(space, ship);
+
+		AbstractAction newAction = null;
+		if (targetAsteroid != null) {
+			asteroidToShipMap.put(targetAsteroid.getId(), ship);
+			state.target = targetAsteroid.getId();
+			newAction = new MoveToObjectAction(space, ship.getPosition(), targetAsteroid, targetAsteroid.getPosition().getTranslationalVelocity());
+			if(debug && (currentTarget.equals(NO_TARGET) || !currentTarget.equals(targetAsteroid.getId()))){
+				System.out.println("<Action Declaration> - Acquired new target: "+targetAsteroid.getId());
+//				System.out.println("<Velocity Check> - "+ship.getPosition().getTranslationalVelocity());
 			}
 			return newAction;
 		}
-
-		// Rule 3. If not doing anything, just finished, or just hit base, then aim for best asteroid
-		if (current == null || current.isMovementFinished(space) || 
-				(justHitBase.containsKey(ship.getId()) && justHitBase.get(ship.getId()))) {
-			// Update model
-			justHitBase.put(ship.getId(), false);			
-			aimingForBase.put(ship.getId(), false);
-			
-			// Get best asteroid
-			Asteroid asteroid = pickHighestValueNearestFreeAsteroid(space, ship);
-
-			AbstractAction newAction = null;
-
-			/*if (asteroid == null) {
-				// there is no asteroid available so collect a beacon
-				Beacon beacon = pickNearestBeacon(space, ship);
-				// if there is no beacon, then just skip a turn
-				if (beacon == null) {
-					newAction = new DoNothingAction();
-				} else {
-					newAction = new MoveToObjectAction(space, currentPosition, beacon);
-				}
-			} else {
-				asteroidToShipMap.put(asteroid.getId(), ship);
-				newAction = new MoveToObjectAction(space, currentPosition, asteroid);
-			}*/
-			if (asteroid != null) {
-				asteroidToShipMap.put(asteroid.getId(), ship);
-				newAction = new MoveToObjectAction(space, currentPosition, asteroid, 
-						asteroid.getPosition().getTranslationalVelocity());
-				if(debug){
-					System.out.println("<Action Declaration> - Chasing asteroid");
-					System.out.println("<Velocity Check> - "+ship.getPosition().getTranslationalVelocity());
-				}
-				return newAction;
-			}
+		else {			
 			if(debug){
 				System.out.println("<Action Declaration> - No asteroid found to chase."); 
 			}
-			return newAction;
+			return new DoNothingAction();
 		}
-		if(debug) {
-			System.out.println("<Action Declaration> - Continuing action...");
-		}
-		return ship.getCurrentAction();
 	}
-	
-	private Asteroid pickNearestFreeAsteroid(Toroidal2DPhysics space, Ship ship) {
-        Set<Asteroid> asteroids = space.getAsteroids();
-        Asteroid bestAsteroid = null;
-        double minDistance = Double.MAX_VALUE;
-        for (Asteroid asteroid : asteroids) {
-            if (!asteroidToShipMap.containsKey(asteroid.getId())) {
-                if (asteroid.isMineable()) {
-                    double dist = space.findShortestDistance(asteroid.getPosition(), ship.getPosition());
-                    if (dist < minDistance) {
-                        //System.out.println("Considering asteroid " + asteroid.getId() + " as a best one");
-                        bestAsteroid = asteroid;
-                        minDistance = dist;
-                    }
-                }
-            }
-        }
-        return bestAsteroid;
-	}
-	
+
 	/**
-	 * Returns the asteroid of highest value that isn't already being chased by this team
+	 * Determines best action for depositing resources.
 	 * 
-	 * @return
+	 * @param space physics model
+	 * @param ship ship performing action
+	 * @return Action to deposit resources (typically a movement)
+	 */
+	private AbstractAction getNewDepositResourcesAction(Toroidal2DPhysics space, Ship ship) {
+		ShipState state = shipStateMap.get(ship.getId());
+		Base base = AgentUtils.findNearestBase(space, ship);
+		AbstractAction newAction = new MoveToObjectAction(space, ship.getPosition(), base);
+		state.aimingForBase = true;
+		if(debug){
+			System.out.println("<Action Declaration> - Deposit (" + ship.getResources().getTotal()+")");
+		}
+		return newAction;
+	}
+
+	/**
+	 * Determines the best action for obtaining energy.
+	 * 
+	 * @param space physics model
+	 * @param ship ship performing action
+	 * @return action to obtain energy
+	 */
+	private AbstractAction getNewObtainEnergyAction(Toroidal2DPhysics space, Ship ship) {
+		ShipState state = shipStateMap.get(ship.getId());
+		AbstractAction newAction = null;
+		// Find energy source
+		AbstractObject energyTarget = AgentUtils.findNearestEnergySource(space, ship);
+		Position currentPosition = ship.getPosition();
+		if(energyTarget != null && !energyTarget.getId().equals(state.target)) {
+			state.target = energyTarget.getId();
+			newAction = new MoveToObjectAction(space, currentPosition, energyTarget);
+			if(energyTarget instanceof Base) {
+				state.aimingForBase = true;
+			}
+			else {
+				state.aimingForBase = false;
+			}
+			if(debug) {
+				System.out.println("<Action Declaration> - Chasing energy target: "+energyTarget.getId()+" ("+energyTarget.getClass().getName());
+			}
+		}
+		else {
+			if(debug) {
+				System.out.println("Energy target returned null");
+			}
+			newAction = new DoNothingAction();
+			state.target = NO_TARGET;
+		}
+		return newAction;
+	}
+
+	/**
+	 * Picks asteroid by highest value, then by lowest distance
+	 * @param space physics model
+	 * @param ship ship performing action
+	 * @return asteroid to pursue
 	 */
 	private Asteroid pickHighestValueNearestFreeAsteroid(Toroidal2DPhysics space, Ship ship) {
 		Set<Asteroid> asteroids = space.getAsteroids();
@@ -240,17 +266,26 @@ public class BDSMFriendyModelBasedAgent extends TeamClient {
 					double dist = space.findShortestDistance(asteroid.getPosition(), ship.getPosition());
 					if (dist < minDistance) {
 						bestMoney = asteroid.getResources().getTotal();
-						//System.out.println("Considering asteroid " + asteroid.getId() + " as a best one");
 						bestAsteroid = asteroid;
 						minDistance = dist;
 					}
 				}
 			}
 		}
-		//System.out.println("Best asteroid has " + bestMoney);
 		return bestAsteroid;
 	}
 	
+	/**
+	 * Determines the action that a base should take on this time-step.
+	 * 
+	 * @param space physics model
+	 * @param base Base
+	 * @return Action for this base to take.
+	 */
+	private AbstractAction getBDSMBaseAction(Toroidal2DPhysics space, Base base) {
+		/**For project 1, bases do nothing*/
+		return new DoNothingAction();
+	}
 
 	@Override
 	public void getMovementEnd(Toroidal2DPhysics space, Set<AbstractActionableObject> actionableObjects) {
@@ -260,7 +295,6 @@ public class BDSMFriendyModelBasedAgent extends TeamClient {
 			Asteroid asteroid = (Asteroid) space.getObjectById(asteroidId);
 			if (asteroid == null || !asteroid.isAlive() || asteroid.isMoveable()) {
  				finishedAsteroids.add(asteroid);
-				//System.out.println("Removing asteroid from map");
 			}
 		}
 
@@ -268,87 +302,34 @@ public class BDSMFriendyModelBasedAgent extends TeamClient {
 			asteroidToShipMap.remove(asteroid.getId());
 		}
 		
-		// check to see who bounced off bases
-		for (UUID shipId : aimingForBase.keySet()) {
-			if (aimingForBase.get(shipId)) {
+		/**
+		 * Update ship states
+		 */
+		for (UUID shipId : shipStateMap.keySet()) {
+			ShipState state = shipStateMap.get(shipId);
+			// Check if ships have just hit the base (i.e. were aiming for it and have 0 resources).
+			if (state.aimingForBase) {
 				Ship ship = (Ship) space.getObjectById(shipId);
 				if (ship.getResources().getTotal() == 0 ) {
-					// we hit the base (or died, either way, we are not aiming for base now)
 					if(debug) {
 						System.out.println("<"+shipId.toString()+"> - Hit the base and dropped off resources");
 					}
-					aimingForBase.put(shipId, false);
-					justHitBase.put(shipId, true);
+					state.aimingForBase = false;
+					state.justHitBase = true;
 				}
 			}
 		}
-
-
-	}
-
-	/**
-	 * Demonstrates one way to read in knowledge from a file
-	 */
-	@Override
-	public void initialize(Toroidal2DPhysics space) {
-		asteroidToShipMap = new HashMap<UUID, Ship>();
-		aimingForBase = new HashMap<UUID, Boolean>();
-		justHitBase = new HashMap<UUID, Boolean>();
-		
-		XStream xstream = new XStream();
-		xstream.alias("ExampleKnowledge", ExampleKnowledge.class);
-
-		try { 
-			myKnowledge = (ExampleKnowledge) xstream.fromXML(new File(getKnowledgeFile()));
-		} catch (XStreamException e) {
-			// if you get an error, handle it other than a null pointer because
-			// the error will happen the first time you run
-			myKnowledge = new ExampleKnowledge();
-		}
-	}
-
-	/**
-	 * Demonstrates saving out to the xstream file
-	 * You can save out other ways too.  This is a human-readable way to examine
-	 * the knowledge you have learned.
-	 */
-	@Override
-	public void shutDown(Toroidal2DPhysics space) {
-		XStream xstream = new XStream();
-		xstream.alias("ExampleKnowledge", ExampleKnowledge.class);
-
-		try { 
-			// if you want to compress the file, change FileOuputStream to a GZIPOutputStream
-			xstream.toXML(myKnowledge, new FileOutputStream(new File(getKnowledgeFile())));
-		} catch (XStreamException e) {
-			// if you get an error, handle it somehow as it means your knowledge didn't save
-			// the error will happen the first time you run
-			myKnowledge = new ExampleKnowledge();
-		} catch (FileNotFoundException e) {
-			myKnowledge = new ExampleKnowledge();
-		}
 	}
 
 	@Override
-	public Set<SpacewarGraphics> getGraphics() {
-		return null;
-	}
-
-	@Override
-	/**
-	 * If there is enough resourcesAvailable, buy a base.  Place it by finding a ship that is sufficiently
-	 * far away from the existing bases
-	 */
 	public Map<UUID, PurchaseTypes> getTeamPurchases(Toroidal2DPhysics space,
-			Set<AbstractActionableObject> actionableObjects, 
-			ResourcePile resourcesAvailable, 
+			Set<AbstractActionableObject> actionableObjects, ResourcePile resourcesAvailable,
 			PurchaseCosts purchaseCosts) {
-
+		// Return value, will contain at most one base purchase for one ship
 		HashMap<UUID, PurchaseTypes> purchases = new HashMap<UUID, PurchaseTypes>();
 		
-		// TODO: Determine if base is impossible to purchase, add heuristic to purchase anyway
-		boolean bought_base = false;
 		
+		// TODO: Determine if base is impossible to purchase, add heuristic to purchase anyway
 		if (purchaseCosts.canAfford(PurchaseTypes.BASE, resourcesAvailable)) {
 			for (AbstractActionableObject actionableObject : actionableObjects) {
 				if (actionableObject instanceof Ship) {
@@ -367,33 +348,62 @@ public class BDSMFriendyModelBasedAgent extends TeamClient {
 					}
 					if (buyBase) {
 						purchases.put(ship.getId(), PurchaseTypes.BASE);
-						bought_base = true;
-						//System.out.println("Buying a base!!");
 						break;
 					}
 				}
 			}		
 		} 
 		
-		// Ship Purchase
-		if (bought_base == false && purchaseCosts.canAfford(PurchaseTypes.SHIP, resourcesAvailable)) {
-			for (AbstractActionableObject actionableObject : actionableObjects) {
-				// TODO: What if we chose a base to spawn our ship at for a reason, instead of the first available one?
-				if (actionableObject instanceof Base) {
-					Base base = (Base) actionableObject;
-					purchases.put(base.getId(), PurchaseTypes.SHIP);
-					break;
-				}
-			}
-		}
 		return purchases;
 	}
 
+	@Override
+	public void initialize(Toroidal2DPhysics space) {
+		// Init model variables
+		asteroidToShipMap = new HashMap<UUID, Ship>();
+		shipStateMap = new HashMap<UUID, ShipState>();
+		
+		// BTW: copied from cooperative heuristic agent
+		XStream xstream = new XStream();
+		xstream.alias("ExampleKnowledge", ExampleKnowledge.class);
+
+		try { 
+			myKnowledge = (ExampleKnowledge) xstream.fromXML(new File(getKnowledgeFile()));
+		} catch (XStreamException e) {
+			// if you get an error, handle it other than a null pointer because
+			// the error will happen the first time you run
+			myKnowledge = new ExampleKnowledge();
+		}
+	}
+
+	@Override
+	public void shutDown(Toroidal2DPhysics space) {
+		// BTW: copied from Cooperative heuristic agent
+		XStream xstream = new XStream();
+		xstream.alias("ExampleKnowledge", ExampleKnowledge.class);
+
+		try { 
+			// if you want to compress the file, change FileOuputStream to a GZIPOutputStream
+			xstream.toXML(myKnowledge, new FileOutputStream(new File(getKnowledgeFile())));
+		} catch (XStreamException e) {
+			// if you get an error, handle it somehow as it means your knowledge didn't save
+			// the error will happen the first time you run
+			myKnowledge = new ExampleKnowledge();
+		} catch (FileNotFoundException e) {
+			myKnowledge = new ExampleKnowledge();
+		}
+	}
+
 	/**
-	 * Unused in cooperative mode
-	 * @param space
-	 * @param actionableObjects
-	 * @return Empty set
+	 * No custom graphics
+	 */
+	@Override
+	public Set<SpacewarGraphics> getGraphics() {
+		return null;
+	}
+
+	/**
+	 * Power-ups are unused by the cooperative bot
 	 */
 	@Override
 	public Map<UUID, SpaceSettlersPowerupEnum> getPowerups(Toroidal2DPhysics space,

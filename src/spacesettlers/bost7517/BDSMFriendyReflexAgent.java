@@ -36,7 +36,7 @@ import spacesettlers.utilities.Position;
  * 
  * @author Cameron Bost, Joshua Atkinson
  */
-public class FriendyAgentBDSM extends TeamClient {
+public class BDSMFriendyReflexAgent extends TeamClient {
 	private boolean debug = false;
 	HashMap <UUID, Ship> asteroidToShipMap;
 	HashMap <UUID, Boolean> aimingForBase;

@@ -145,5 +145,11 @@ public class AgentUtils {
 
 		return closestBeacon;
 	}
+	
+	static String getAbstractType(AbstractObject object) {
+		String objType = object.getClass().getName();
+		String[] components = objType.split("\\.");
+		return components[components.length-1];
+	}
 
 }

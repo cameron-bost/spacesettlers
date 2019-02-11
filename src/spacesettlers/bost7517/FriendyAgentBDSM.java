@@ -22,7 +22,6 @@ import spacesettlers.clients.TeamClient;
 import spacesettlers.graphics.SpacewarGraphics;
 import spacesettlers.objects.AbstractActionableObject;
 import spacesettlers.objects.AbstractObject;
-import spacesettlers.objects.AiCore;
 import spacesettlers.objects.Asteroid;
 import spacesettlers.objects.Base;
 import spacesettlers.objects.Beacon;
@@ -112,7 +111,7 @@ public class FriendyAgentBDSM extends TeamClient {
 		if (ship.getEnergy() < LOW_ENERGY_THRESHOLD) {
 			AbstractAction newAction = null;
 			// Find energy source
-			AbstractObject energyTarget = findNearestEnergySource(space, ship);
+			AbstractObject energyTarget = AgentUtils.findNearestEnergySource(space, ship);
 			if(energyTarget != null) {
 				newAction = new MoveToObjectAction(space, currentPosition, energyTarget);
 				if(energyTarget instanceof Base) {
@@ -150,7 +149,7 @@ public class FriendyAgentBDSM extends TeamClient {
 
 		// Rule 2. If the ship has enough resources, deposit them
 		if (ship.getResources().getTotal() > RESOURCE_THRESHOLD) {
-			Base base = findNearestBase(space, ship);
+			Base base = AgentUtils.findNearestBase(space, ship);
 			AbstractAction newAction = new MoveToObjectAction(space, currentPosition, base);
 			aimingForBase.put(ship.getId(), true);
 			if(debug){
@@ -205,60 +204,6 @@ public class FriendyAgentBDSM extends TeamClient {
 		return ship.getCurrentAction();
 	}
 	
-	/**
-	 * Locates nearest object containing energy. Note that energy sources are bases, beacons, and cores.
-	 * 
-	 * @param space physics model
-	 * @param ship ship currently acting
-	 * @return nearest energy source
-	 */
-	private AbstractObject findNearestEnergySource(Toroidal2DPhysics space, Ship ship) {
-		double minDistance = Double.MAX_VALUE;
-		AbstractObject bestObject = null;
-		
-		Base minBase = findNearestBase(space, ship);
-		double minBaseDist = Double.MAX_VALUE;
-		if(minBase != null) {
-			minBaseDist = space.findShortestDistance(ship.getPosition(), minBase.getPosition());
-		}
-		if(debug) {
-			System.out.println("Min Base: "+ (minBase == null ? "null" : minBase.getId()+", Dist: "+minBaseDist));
-		}
-		
-		AiCore minCore = findNearestAiCore(space, ship);
-		double minCoreDist = Double.MAX_VALUE;
-		if(minCore != null) {
-			minCoreDist = space.findShortestDistance(ship.getPosition(), minCore.getPosition());
-		}
-		if(debug) {
-			System.out.println("Min Core: "+ (minCore == null ? "null" : minCore.getId()+", Dist: "+minCoreDist));
-		}
-		
-		Beacon minBeacon = findNearestBeacon(space, ship);
-		double minBeaconDist = Double.MAX_VALUE;
-		if(minBeacon != null) {
-			minBeaconDist = space.findShortestDistance(ship.getPosition(), minBeacon.getPosition());
-		}
-		if(debug) {
-			System.out.println("Min Beacon: "+ (minBeacon == null ? "null" : minBeacon.getId()+", Dist: "+minBeaconDist));
-		}
-		
-		minDistance = minBaseDist;
-		if(minCoreDist < minDistance) {
-			minDistance = minCoreDist;
-			bestObject = minCore;
-		}
-		if(minBeaconDist < minDistance) {
-			minDistance = minBeaconDist;
-			bestObject = minBeacon;
-		}
-		
-		if(debug && bestObject != null) {
-			System.out.println("Targetting energy source " + bestObject.getId());
-		}
-		return bestObject;
-	}
-
 	private Asteroid pickNearestFreeAsteroid(Toroidal2DPhysics space, Ship ship) {
         Set<Asteroid> asteroids = space.getAsteroids();
         Asteroid bestAsteroid = null;
@@ -277,54 +222,7 @@ public class FriendyAgentBDSM extends TeamClient {
         }
         return bestAsteroid;
 	}
-
-
-	/**
-	 * Find the base for this team nearest to this ship
-	 * 
-	 * @param space
-	 * @param ship
-	 * @return
-	 */
-	private Base findNearestBase(Toroidal2DPhysics space, Ship ship) {
-		double minDistance = Double.MAX_VALUE;
-		Base nearestBase = null;
-
-		for (Base base : space.getBases()) {
-			if (base.getTeamName().equalsIgnoreCase(ship.getTeamName())) {
-				double dist = space.findShortestDistance(ship.getPosition(), base.getPosition());
-				if (dist < minDistance) {
-					minDistance = dist;
-					nearestBase = base;
-				}
-			}
-		}
-		return nearestBase;
-	}
 	
-	/**
-	 * Find the AI core nearest to this ship
-	 * 
-	 * @param space
-	 * @param ship
-	 * @return
-	 */
-	private AiCore findNearestAiCore(Toroidal2DPhysics space, Ship ship) {
-		double minDistance = Double.MAX_VALUE;
-		AiCore nearestCore = null;
-
-		for (AiCore core : space.getCores()) {
-			if (core.getTeamName().equalsIgnoreCase(ship.getTeamName())) {
-				double dist = space.findShortestDistance(ship.getPosition(), core.getPosition());
-				if (dist < minDistance) {
-					minDistance = dist;
-					nearestCore = core;
-				}
-			}
-		}
-		return nearestCore;
-	}
-
 	/**
 	 * Returns the asteroid of highest value that isn't already being chased by this team
 	 * 
@@ -352,33 +250,7 @@ public class FriendyAgentBDSM extends TeamClient {
 		//System.out.println("Best asteroid has " + bestMoney);
 		return bestAsteroid;
 	}
-
-
-	/**
-	 * Find the nearest beacon to this ship
-	 * @param space
-	 * @param ship
-	 * @return
-	 */
-	private Beacon findNearestBeacon(Toroidal2DPhysics space, Ship ship) {
-		// get the current beacons
-		Set<Beacon> beacons = space.getBeacons();
-
-		Beacon closestBeacon = null;
-		double bestDistance = Double.POSITIVE_INFINITY;
-
-		for (Beacon beacon : beacons) {
-			double dist = space.findShortestDistance(ship.getPosition(), beacon.getPosition());
-			if (dist < bestDistance) {
-				bestDistance = dist;
-				closestBeacon = beacon;
-			}
-		}
-
-		return closestBeacon;
-	}
-
-
+	
 
 	@Override
 	public void getMovementEnd(Toroidal2DPhysics space, Set<AbstractActionableObject> actionableObjects) {

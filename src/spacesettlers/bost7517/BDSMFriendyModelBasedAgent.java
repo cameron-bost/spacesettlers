@@ -34,54 +34,110 @@ import spacesettlers.utilities.Position;
 import spacesettlers.utilities.Vector2D;
 
 /**
- * A model-based reflex agent capable of playing spacesettlers, the main project in CS 5013 - Artificial Intelligence.
- * Included rules for this agent are:
- * If no previous path currently being followed, find new path:
- * 	If energy is low, go for energy. 
- * 	Else if ship is full of resources, go to base. 
- * 	Else choose target asteroid.
- * else follow previous path.
+ * A model-based reflex agent capable of playing spacesettlers, the main 
+ * project in CS 5013 - Artificial Intelligence.
+ * 
+ * Rules:
+ * If collision is detected: maneuver around the object
+ * If energy is low: find a source of energy. 
+ * If ship has more resources than half of its energy: go to base (up to 2500). 
+ * If ship is already pursuing an asteroid: continue this pursuit.
+ * Otherwise: choose most favorable asteroid that is not already being hunted.
  * 
  * @author Cameron Bost
  * @version 0.1
  */
 public class BDSMFriendyModelBasedAgent extends TeamClient {
 
+	/**
+	 * A struct to represent ship properties. This was 
+	 * created in favor of having one HashMap instead
+	 * of several.
+	 * @author Cameron Bost
+	 *
+	 */
 	class ShipState {
 		/**
 		 * Basic Properties
 		 */
+		/**Most recently targeted object*/
 		UUID target = NO_TARGET;
+		/**Indicates if the ship is on course for its own base*/
 		boolean aimingForBase = false;
+		/**Indicates if the ship has just hit its own base (prevents from getting stuck)*/
 		boolean justHitBase = false;
+		/**The number of resources in the ship. Used to analyze changes after the turn.*/
 		int totalResources = 0;
+		/**Allows for debug message announcing the death of the ship one time only.*/
+		boolean isDead = false;
 		/**
 		 * Collision Avoidance
 		 */
+		/**The ship's energy. Used for differential analysis.*/
 		double energy = 0;
+		/**The ship's previous energy change.*/
 		double energyDiff = 0;
+		/**Whether or not the ship is currently running from an attacker.*/
 		boolean isRunning = false;
+		/**Indicates the ID of the attacker, when applicable*/
 		UUID runningFrom = NO_TARGET;
-		boolean isDead = false;
 	}
 
+	/**
+	 * Threading variables
+	 */
+	/**Interrupt variable for phases that take too long.*/
 	Boolean stopNow = false;
+	/**Indicator for the action phase being complete*/
 	Boolean actionFinished = false;
+	/**Indicator for the end movement phase being complete*/
+	Boolean endMoveFinished = false;
 
+	/**
+	 * Thread for checking that the agent's cycles aren't too long.
+	 * @author Cameron Bost
+	 *
+	 */
 	class TimeoutChecker extends Thread {
 		@Override
 		public void run() {
 			while (keepThreadsAlive) {
-				for (int i = 0; i < 99 && !actionFinished; i++) {
+				// Wait for 99% of action phase
+				for (int i = 0; i < 99 && !actionFinished && keepThreadsAlive; i++) {
 					try {
 						Thread.sleep(SpaceSettlersSimulator.TEAM_ACTION_TIMEOUT / 100);
 					} catch (InterruptedException e) {
 						e.printStackTrace();
 					}
 				}
-				synchronized (stopNow) {
-					stopNow = true;
+				// Halt program to prevent terrible things
+				if(!actionFinished) {
+					synchronized (stopNow) {
+						stopNow = true;
+					}
 				}
+				// Interim between action -> end movement phases
+				while(stopNow && keepThreadsAlive) {}
+				// Wait for 99% of end movement time
+				for(int i = 0; i < 99 && !endMoveFinished && keepThreadsAlive; i++) {
+					try {
+						Thread.sleep(SpaceSettlersSimulator.TEAM_END_ACTION_TIMEOUT / 100);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+				// Send timeout signal if not finished
+				if(!endMoveFinished){
+					synchronized(stopNow) {
+						stopNow = true;
+					}
+				}
+				// Wait for agent to unlock stopNow
+				while(stopNow && keepThreadsAlive) {}
+				// Reset variables
+				stopNow = false;
+				actionFinished = false;
+				endMoveFinished = false;
 			}
 		}
 	}
@@ -138,44 +194,58 @@ public class BDSMFriendyModelBasedAgent extends TeamClient {
 	@Override
 	public Map<UUID, AbstractAction> getMovementStart(Toroidal2DPhysics space,
 			Set<AbstractActionableObject> actionableObjects) {
-		// Update observation variables
-		for (AbstractObject actionable : actionableObjects) {
-			// Ship actions
-			if (actionable instanceof Ship) {
-				Ship ship = (Ship) actionable;
-				if (!shipStateMap.containsKey(ship.getId())) {
-					shipStateMap.put(ship.getId(), new ShipState());
+		try{
+			actionFinished = false;
+			// Determine actions to be performed by ships and bases
+			HashMap<UUID, AbstractAction> actions = new HashMap<UUID, AbstractAction>();
+			// Update observation variables
+			for (AbstractObject actionable : actionableObjects) {
+				if(stopNow) {
+					return actions;
 				}
-				ShipState state = shipStateMap.get(ship.getId());
-				double prevEnergy = state.energy;
-				double currentEnergy = ship.getEnergy();
-				double diff = (prevEnergy > 0 ? ship.getEnergy() - prevEnergy : 0);
-				state.energy = currentEnergy;
-				state.energyDiff = diff;
-				state.totalResources = ship.getResources().getTotal();
+				// Ship actions
+				if (actionable instanceof Ship) {
+					Ship ship = (Ship) actionable;
+					if (!shipStateMap.containsKey(ship.getId())) {
+						shipStateMap.put(ship.getId(), new ShipState());
+					}
+					ShipState state = shipStateMap.get(ship.getId());
+					double prevEnergy = state.energy;
+					double currentEnergy = ship.getEnergy();
+					double diff = (prevEnergy > 0 ? ship.getEnergy() - prevEnergy : 0);
+					state.energy = currentEnergy;
+					state.energyDiff = diff;
+					state.totalResources = ship.getResources().getTotal();
+				}
+			}
+	
+			for (AbstractObject actionable : actionableObjects) {
+				if(stopNow) {
+					return actions;
+				}
+				// Ship actions
+				if (actionable instanceof Ship) {
+					Ship ship = (Ship) actionable;
+					try {
+						actions.put(ship.getId(), getBDSMShipAction(space, ship));
+					}
+					catch(Exception e) {
+						System.out.println(e.getMessage());
+					}
+				}
+				// Base actions
+				else if (actionable instanceof Base) {
+					Base base = (Base) actionable;
+					actions.put(base.getId(), getBDSMBaseAction(space, base));
+				}
+			}
+			return actions;
+		} finally {
+			actionFinished = true;
+			synchronized(stopNow) {
+				stopNow = false;
 			}
 		}
-
-		// Determine actions to be performed by ships and bases
-		HashMap<UUID, AbstractAction> actions = new HashMap<UUID, AbstractAction>();
-		for (AbstractObject actionable : actionableObjects) {
-			// Ship actions
-			if (actionable instanceof Ship) {
-				Ship ship = (Ship) actionable;
-				try {
-					actions.put(ship.getId(), getBDSMShipAction(space, ship));
-				}
-				catch(Exception e) {
-					System.out.println(e.getMessage());
-				}
-			}
-			// Base actions
-			else if (actionable instanceof Base) {
-				Base base = (Base) actionable;
-				actions.put(base.getId(), getBDSMBaseAction(space, base));
-			}
-		}
-		return actions;
 	}
 
 	/**
@@ -195,7 +265,6 @@ public class BDSMFriendyModelBasedAgent extends TeamClient {
 	 * @return Action for this ship to take
 	 */
 	private AbstractAction getBDSMShipAction(Toroidal2DPhysics space, Ship ship) {
-		stopNow = false;
 		/**
 		 * Setup ShipState object (if it doesn't exist)
 		 */
@@ -299,7 +368,9 @@ public class BDSMFriendyModelBasedAgent extends TeamClient {
 
 	/**
 	 * Debug only, for printing all ship state fields.
+	 * unused warning suppressed since this is a debug method.
 	 */
+	@SuppressWarnings("unused")
 	private void printState(Toroidal2DPhysics space, Ship ship, ShipState state) {
 		System.out.println("ID: " + ship.getId());
 		System.out.println("Last target: " + (state.target == null ? "null" : 
@@ -319,17 +390,16 @@ public class BDSMFriendyModelBasedAgent extends TeamClient {
 			System.out.println("isRunning: " + state.isRunning);
 			System.out.println("runningFrom: " + state.runningFrom);
 		}
-//		System.out.println("isDead: "+state.isDead);
 	}
 
 	/**
 	 * Finds a position suitable for running away from an object.
-	 * 1. Finds a 2D vector perpendicular to the distance vector between the two objects.
-	 * 2. Multiplies the vector by 1.5 * radius of the collided object.
+	 * 1. Finds a 2D unit vector perpendicular to the distance vector between the two objects.
+	 * 2. Multiplies the unit vector by the radius of the collided object.
 	 * @param space physics model
 	 * @param running Object attempting to flee
 	 * @param attacker Aggressor
-	 * @return 2D vector suitable for running away from collidedWith
+	 * @return 2D vector suitable for running away from attacker
 	 */
 	private Position getRunawayPosition(Toroidal2DPhysics space, AbstractObject running, AbstractObject attacker) {
 		Vector2D distanceV = space.findShortestDistanceVector(running.getPosition(), attacker.getPosition());
@@ -348,7 +418,8 @@ public class BDSMFriendyModelBasedAgent extends TeamClient {
 	}
 
 	/**
-	 * Detects the closest collideable object to this ship.
+	 * Detects the closest collideable object to this ship, to identify 
+	 * which object is responsible for damage.
 	 * 
 	 * @param space physics model
 	 * @param ship  Ship to check for collisions
@@ -362,6 +433,9 @@ public class BDSMFriendyModelBasedAgent extends TeamClient {
 		if (energyDiff < -1 * MAX_ACCELERATION) {
 			double minDist = Double.MAX_VALUE;
 			for (AbstractObject object : space.getAllObjects()) {
+				if(stopNow) {
+					return collision;
+				}
 				// Ignored collisions include consumable items, ourselves, our base, and dead
 				// things
 				if (!AgentUtils.isDangerous(ship, object)) {
@@ -383,7 +457,7 @@ public class BDSMFriendyModelBasedAgent extends TeamClient {
 	}
 
 	/**
-	 * Obtains a new target for the ship.
+	 * Obtains a new asteroid target for the ship.
 	 * 
 	 * @param space physics model
 	 * @param ship  ship to perform action
@@ -400,7 +474,6 @@ public class BDSMFriendyModelBasedAgent extends TeamClient {
 		// Get best asteroid
 		Asteroid targetAsteroid = pickHighestValueNearestFreeAsteroid(space, ship);
 
-		AbstractAction newAction = null;
 		if (targetAsteroid != null) {
 			asteroidToShipMap.put(targetAsteroid.getId(), ship);
 			state.target = targetAsteroid.getId();
@@ -412,15 +485,17 @@ public class BDSMFriendyModelBasedAgent extends TeamClient {
 			double vXUnit = vDirection.getXValue() / vDirection.getMagnitude();
 			double vYUnit = vDirection.getYValue() / vDirection.getMagnitude();
 			Vector2D minVelocity = new Vector2D(vXUnit * MIN_ACCEPTABLE_VELOCITY, vYUnit * MIN_ACCEPTABLE_VELOCITY);
+			// Target velocity is forced to be at least minVelocity (a vector in the same direction as the current path).
 			Vector2D targetVelocity = (asteroidP.getTotalTranslationalVelocity() > minVelocity.getMagnitude()
 					? asteroidP.getTranslationalVelocity()
 					: minVelocity);
-			newAction = new MoveToObjectAction(space, ship.getPosition(), targetAsteroid, targetVelocity);
+			AbstractAction newAction = new MoveToObjectAction(space, ship.getPosition(), targetAsteroid, targetVelocity);
 			if (debug && (currentTarget.equals(NO_TARGET) || !currentTarget.equals(targetAsteroid.getId()))) {
 				System.out.println("<Action Declaration> - Acquired new target: " + targetAsteroid.getId());
 			}
 			return newAction;
 		}
+		/**If no asteroid is found, there is nothing to be done (should never happen).*/
 		else {			
 			if(debug){
 				System.out.println("<Action Declaration> - No asteroid found to chase."); 
@@ -430,11 +505,11 @@ public class BDSMFriendyModelBasedAgent extends TeamClient {
 	}
 
 	/**
-	 * Determines best action for depositing resources.
+	 * Determines best base to travel to for depositing resources.
 	 * 
 	 * @param space physics model
 	 * @param ship  ship performing action
-	 * @return Action to deposit resources (typically a movement)
+	 * @return Action to deposit resources (movement to base)
 	 */
 	private AbstractAction getNewDepositResourcesAction(Toroidal2DPhysics space, Ship ship) {
 		ShipState state = shipStateMap.get(ship.getId());
@@ -449,7 +524,8 @@ public class BDSMFriendyModelBasedAgent extends TeamClient {
 	}
 
 	/**
-	 * Determines the best action for obtaining energy.
+	 * Finds the closest energy source (not just beacons), and 
+	 * creates an action to navigate to it.
 	 * 
 	 * @param space physics model
 	 * @param ship  ship performing action
@@ -475,7 +551,9 @@ public class BDSMFriendyModelBasedAgent extends TeamClient {
 							+ AgentUtils.getAbstractType(energyTarget) + ")");
 				}
 			}
-		} else {
+		}
+		/**If no energy target is found, do nothing (should never happen).*/
+		else {
 			if (debug) {
 				System.out.println("<Action Declaration> - Energy target returned null");
 			}
@@ -501,15 +579,15 @@ public class BDSMFriendyModelBasedAgent extends TeamClient {
 
 		for (Asteroid asteroid : asteroids) {
 			if (stopNow) {
-				System.out.println("Interrupted");
 				return bestAsteroid;
 			}
 			if (!asteroidToShipMap.containsKey(asteroid.getId())) {
 				if (asteroid.isMineable() && asteroid.getResources().getTotal() > bestMoney) {
 					double dist = space.findShortestDistance(asteroid.getPosition(), ship.getPosition());
-					if (dist < minDistance) {
-						bestMoney = asteroid.getResources().getTotal();
+					if (dist < minDistance || asteroid.getResources().getTotal() > bestMoney) {
+						/**Check if enemy ship is currently heading to this asteroid, and if it will arrive before us.*/
 						if (!AgentUtils.targetedByOpponent(space, ship, asteroid)) {
+							bestMoney = asteroid.getResources().getTotal();
 							bestAsteroid = asteroid;
 							minDistance = dist;
 						}
@@ -523,6 +601,8 @@ public class BDSMFriendyModelBasedAgent extends TeamClient {
 	/**
 	 * Determines the action that a base should take on this time-step.
 	 * 
+	 * At present the base has no action.
+	 * 
 	 * @param space physics model
 	 * @param base  Base
 	 * @return Action for this base to take.
@@ -534,63 +614,83 @@ public class BDSMFriendyModelBasedAgent extends TeamClient {
 
 	@Override
 	public void getMovementEnd(Toroidal2DPhysics space, Set<AbstractActionableObject> actionableObjects) {
-		ArrayList<Asteroid> finishedAsteroids = new ArrayList<Asteroid>();
-
-		for (UUID asteroidId : asteroidToShipMap.keySet()) {
-			Asteroid asteroid = (Asteroid) space.getObjectById(asteroidId);
-			Ship ship = asteroidToShipMap.get(asteroidId);
-			if (asteroid == null || !asteroid.isAlive() || asteroid.isMoveable() 
-					|| (ship != null && 
-						(!shipStateMap.get(ship.getId()).target.equals(asteroidId))
-							|| !ship.isAlive())) {
-				finishedAsteroids.add(asteroid);
-			}
-		}
-
-		for (Asteroid asteroid : finishedAsteroids) {
-			Ship assailant = asteroidToShipMap.get(asteroid.getId());
-			ShipState state = shipStateMap.get(assailant.getId());
-			asteroidToShipMap.remove(asteroid.getId());
-			// Only remove from target map if asteroid is dead
-			if (asteroid != null && !asteroid.isAlive()) {
-				state.target = NO_TARGET;
-				if (state.totalResources < assailant.getResources().getTotal()) {
-					if(debug) {
-						System.out.println("<Action Completed> - Captured target: " + asteroid.getId());
-					}
+		try{
+			endMoveFinished = false;
+			// Generate list of all asteroids that have been exhausted (or have lost their pursuers).
+			ArrayList<Asteroid> terminatedPursuits = new ArrayList<Asteroid>();
+			for (UUID asteroidId : asteroidToShipMap.keySet()) {
+				if(stopNow) {
+					return;
 				}
-				else {
-					if(debug) {
-						System.out.println("<Action Failed> - Target lost: "+asteroid.getId());
-					}
+				Asteroid asteroid = (Asteroid) space.getObjectById(asteroidId);
+				Ship ship = asteroidToShipMap.get(asteroidId);
+				if (asteroid == null || !asteroid.isAlive() || asteroid.isMoveable() 
+						|| (ship != null && 
+							(!shipStateMap.get(ship.getId()).target.equals(asteroidId))
+								|| !ship.isAlive())) {
+					terminatedPursuits.add(asteroid);
 				}
 			}
-		}
-
-		/**
-		 * Update ship states
-		 */
-		for (UUID shipId : shipStateMap.keySet()) {
-			ShipState state = shipStateMap.get(shipId);
-			// Check if ships have just hit the base (i.e. were aiming for it and have 0
-			// resources).
-			Ship ship = (Ship) space.getObjectById(shipId);
-			if (state.aimingForBase) {
-				if (ship.getResources().getTotal() == 0) {
-					if (debug) {
-						System.out.println("<" + shipId.toString() + "> - Hit the base and dropped off resources");
+	
+			/**
+			 * Remove asteroids and pursuers from all relevant data structures. Update states.
+			 */
+			for (Asteroid asteroid : terminatedPursuits) {
+				if(stopNow) {
+					return;
+				}
+				Ship pursuer = asteroidToShipMap.get(asteroid.getId());
+				ShipState state = shipStateMap.get(pursuer.getId());
+				asteroidToShipMap.remove(asteroid.getId());
+				// Only remove from target map if asteroid is dead
+				if (asteroid != null && !asteroid.isAlive()) {
+					state.target = NO_TARGET;
+					if (state.totalResources < pursuer.getResources().getTotal()) {
+						if(debug) {
+							System.out.println("<Action Completed> - Captured target: " + asteroid.getId());
+						}
 					}
-					state.aimingForBase = false;
-					state.justHitBase = true;
+					else {
+						if(debug) {
+							System.out.println("<Action Failed> - Target lost: "+asteroid.getId());
+						}
+					}
 				}
 			}
-			if (!ship.isAlive()) {
-				if (!state.isDead) {
-					if(debug) {
-						System.out.println("<Death Report> - Ship " + shipId + " has died!");
+	
+			/**
+			 * Update ship states
+			 */
+			for (UUID shipId : shipStateMap.keySet()) {
+				if(stopNow) {
+					return;
+				}
+				ShipState state = shipStateMap.get(shipId);
+				// Check if ships have just hit the base (i.e. were aiming for it and have 0
+				// resources).
+				Ship ship = (Ship) space.getObjectById(shipId);
+				if (state.aimingForBase) {
+					if (ship.getResources().getTotal() == 0) {
+						if (debug) {
+							System.out.println("<" + shipId.toString() + "> - Hit the base and dropped off resources");
+						}
+						state.aimingForBase = false;
+						state.justHitBase = true;
 					}
 				}
-				state.isDead = true;
+				if (!ship.isAlive()) {
+					if (!state.isDead) {
+						if(debug) {
+							System.out.println("<Death Report> - Ship " + shipId + " has died!");
+						}
+					}
+					state.isDead = true;
+				}
+			}
+		} finally {
+			endMoveFinished = true;
+			synchronized(stopNow) {
+				stopNow = false;
 			}
 		}
 	}
@@ -609,8 +709,6 @@ public class BDSMFriendyModelBasedAgent extends TeamClient {
 				if (actionableObject instanceof Ship) {
 					Ship ship = (Ship) actionableObject;
 					Set<Base> bases = space.getBases();
-
-					// how far away is this ship to a base of my team?
 					boolean buyBase = true;
 					for (Base base : bases) {
 						if (base.getTeamName().equalsIgnoreCase(getTeamName())) {
@@ -633,11 +731,12 @@ public class BDSMFriendyModelBasedAgent extends TeamClient {
 
 	@Override
 	public void initialize(Toroidal2DPhysics space) {
-		// Init threading variables
+		// Threading variables
 		keepThreadsAlive = true;
 		actionFinished = false;
-		new TimeoutChecker().start();
-		// Init model variables
+		endMoveFinished = false;
+		new TimeoutChecker().start();	//Timeout thread
+		// Model variables
 		asteroidToShipMap = new HashMap<UUID, Ship>();
 		shipStateMap = new HashMap<UUID, ShipState>();
 
@@ -670,6 +769,8 @@ public class BDSMFriendyModelBasedAgent extends TeamClient {
 		} catch (FileNotFoundException e) {
 			myKnowledge = new ExampleKnowledge();
 		}
+		
+		// Kills the timeout checker thread
 		keepThreadsAlive = false;
 	}
 

@@ -22,6 +22,8 @@ public class AgentUtils {
 	
 	public static final boolean debug = false;
 	
+	public static final double MAX_VELOCITY = Toroidal2DPhysics.MAX_TRANSLATIONAL_VELOCITY;
+	
 
 	/**Distance at which a projection is considered targeting*/
 	public static final double MIN_DISTANCE_PROJECTION_SAFETY = 20;

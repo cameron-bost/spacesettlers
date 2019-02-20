@@ -1,10 +1,12 @@
 package spacesettlers.bost7517;
 
+import java.awt.Color;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -14,12 +16,16 @@ import com.thoughtworks.xstream.XStreamException;
 
 import spacesettlers.actions.AbstractAction;
 import spacesettlers.actions.DoNothingAction;
+import spacesettlers.actions.MoveAction;
 import spacesettlers.actions.MoveToObjectAction;
 import spacesettlers.actions.PurchaseCosts;
 import spacesettlers.actions.PurchaseTypes;
 import spacesettlers.clients.ExampleKnowledge;
 import spacesettlers.clients.TeamClient;
+import spacesettlers.graphics.LineGraphics;
 import spacesettlers.graphics.SpacewarGraphics;
+import spacesettlers.graphics.StarGraphics;
+import spacesettlers.graphics.TargetGraphics;
 import spacesettlers.objects.AbstractActionableObject;
 import spacesettlers.objects.AbstractObject;
 import spacesettlers.objects.Asteroid;
@@ -30,6 +36,7 @@ import spacesettlers.objects.powerups.SpaceSettlersPowerupEnum;
 import spacesettlers.objects.resources.ResourcePile;
 import spacesettlers.simulator.Toroidal2DPhysics;
 import spacesettlers.utilities.Position;
+import spacesettlers.utilities.Vector2D;
 
 /**
  * Based on the PacifistHeuristicAsteroidCollectorTeamClient written by Dr. McGovern
@@ -41,7 +48,7 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 	HashMap <UUID, Ship> asteroidToShipMap;
 	HashMap <UUID, Boolean> aimingForBase;
 	HashMap <UUID, Boolean> justHitBase;
-	
+	private ArrayList<SpacewarGraphics> graphicsToAdd;
 	/**
 	 * Example knowledge used to show how to load in/save out to files for learning
 	 */
@@ -52,7 +59,7 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 	 * Final Variables
 	 */
 	final double LOW_ENERGY_THRESHOLD = 1500; // #P1 - Lowered 2000 -> 1500
-	final double RESOURCE_THRESHOLD = 1500;   // #P1 - Raised 500 -> 2000
+	final double RESOURCE_THRESHOLD = 2500;   // #P1 - Raised 500 -> 2000
 	final double BASE_BUYING_DISTANCE = 350; // #P1 - raised 200 -> 350 
 	
 	
@@ -107,13 +114,15 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 		// update previous action
 		previousAction = current;
 		
+		
+		
 		// Rule 1. If energy is low, go for nearest energy source
 		if (ship.getEnergy() < LOW_ENERGY_THRESHOLD) {
 			AbstractAction newAction = null;
 			// Find energy source
 			AbstractObject energyTarget = AgentUtils.findNearestEnergySource(space, ship);
 			if(energyTarget != null) {
-				newAction = new MoveToObjectAction(space, currentPosition, energyTarget);
+				newAction = new BDSMMoveToObjectAction(space, currentPosition, energyTarget);
 				if(energyTarget instanceof Base) {
 					aimingForBase.put(ship.getId(), true);
 				}
@@ -132,7 +141,7 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 		// Rule 2. If the ship has enough resources, deposit them
 		if (ship.getResources().getTotal() > RESOURCE_THRESHOLD) {
 			Base base = AgentUtils.findNearestBase(space, ship);
-			AbstractAction newAction = new MoveToObjectAction(space, currentPosition, base);
+			AbstractAction newAction = new BDSMMoveToObjectAction(space, currentPosition, base);
 			aimingForBase.put(ship.getId(), true);
 			if(debug){
 				System.out.println("<Action Declaration> - Deposit (" + ship.getResources().getTotal()+")");
@@ -149,29 +158,38 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 			
 			// Get best asteroid
 			Asteroid asteroid = pickHighestValueNearestFreeAsteroid(space, ship);
-
+			
+			graphicsToAdd.add(new StarGraphics(3, this.getTeamColor(), asteroid.getPosition()));
+			LineGraphics line = new LineGraphics(ship.getPosition(), asteroid.getPosition(), 
+					space.findShortestDistanceVector(ship.getPosition(), asteroid.getPosition()));
+			
+			line.setLineColor(this.getTeamColor());
+			graphicsToAdd.add(line);
+			
 			AbstractAction newAction = null;
-
+			
 			if (asteroid != null) {
 				asteroidToShipMap.put(asteroid.getId(), ship);
-				newAction = new MoveToObjectAction(space, currentPosition, asteroid, 
-						asteroid.getPosition().getTranslationalVelocity());
-				if(debug){
+				
+				//newAction = new MoveAction(space,currentPosition,asteroid.getPosition());
+				newAction = new BDSMMoveToObjectAction(space, currentPosition, asteroid, 
+						asteroid.getPosition().getTranslationalVelocity());			
+				
+				if(debug)
+				{
 					System.out.println("<Action Declaration> - Chasing asteroid");
 					System.out.println("<Velocity Check> - "+ship.getPosition().getTranslationalVelocity());
 				}
 				return newAction;
 			}
-			if(debug){
-				System.out.println("<Action Declaration> - No asteroid found to chase."); 
-			}
-			return newAction;
 		}
 		if(debug) {
 			System.out.println("<Action Declaration> - Continuing action...");
 		}
 		return ship.getCurrentAction();
 	}
+	
+	
 	
 	/**
 	 * This function will find the closest valued asteroid. It does not determine by the amount that the asteroid is worth.
@@ -275,6 +293,7 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 		asteroidToShipMap = new HashMap<UUID, Ship>();
 		aimingForBase = new HashMap<UUID, Boolean>();
 		justHitBase = new HashMap<UUID, Boolean>();
+		graphicsToAdd = new ArrayList<SpacewarGraphics>();
 		
 		XStream xstream = new XStream();
 		xstream.alias("ExampleKnowledge", ExampleKnowledge.class);
@@ -312,7 +331,10 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 
 	@Override
 	public Set<SpacewarGraphics> getGraphics() {
-		return null;
+		HashSet<SpacewarGraphics> graphics = new HashSet<SpacewarGraphics>();
+		graphics.addAll(graphicsToAdd);
+		graphicsToAdd.clear();
+		return graphics;
 	}
 
 	@Override

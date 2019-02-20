@@ -13,7 +13,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeoutException;
 
 import com.martiansoftware.jsap.JSAPResult;
 import com.thoughtworks.xstream.XStream;
@@ -244,7 +243,12 @@ public final class SpaceSettlersSimulator {
 		// place the asteroids
 		RandomAsteroidConfig randomAsteroidConfig = simConfig.getRandomAsteroids();
 		for (int a = 0; a < randomAsteroidConfig.getNumberInitialAsteroids(); a++) {
-			Asteroid asteroid = createNewRandomAsteroid(randomAsteroidConfig);
+			boolean mineable = false;
+			if (random.nextDouble() < simConfig.getRandomAsteroids().getProbabilityMineable()) {
+				mineable = true;
+			}
+			
+			Asteroid asteroid = createNewRandomAsteroid(randomAsteroidConfig, mineable);
 			simulatedSpace.addObject(asteroid);
 		}
 
@@ -426,14 +430,9 @@ public final class SpaceSettlersSimulator {
 	 * @param asteroidConfig
 	 * @return
 	 */
-	private Asteroid createNewRandomAsteroid(RandomAsteroidConfig asteroidConfig) {
+	private Asteroid createNewRandomAsteroid(RandomAsteroidConfig asteroidConfig, boolean mineable) {
 		// choose if the asteroid is mine-able
 		double prob = random.nextDouble();
-
-		boolean mineable = false;
-		if (prob < asteroidConfig.getProbabilityMineable()) {
-			mineable = true;
-		}
 
 		// asteroids 
 		// choose the radius randomly for random asteroids
@@ -714,10 +713,18 @@ public final class SpaceSettlersSimulator {
 		
 		//cleanup and remove dead drones - herr0861 edit
 		simulatedSpace.cleanupDeadDrones();
+		
+		// count up dead asteroids and ensure we generate as 
+		// many mineable ones as existed before
+		int mineableAsteroids = simulatedSpace.cleanupAllAndCountMineableDeadAsteroids(); 
 
-		// respawn any objects that  (and that should respawn - this includes Flags)
-		final double asteroidMaxVelocity = simConfig.getRandomAsteroids().getMaxInitialVelocity();
-		simulatedSpace.respawnDeadObjects(random, asteroidMaxVelocity);
+		for (int i = 0; i < mineableAsteroids; i++) {
+			Asteroid asteroid = createNewRandomAsteroid(simConfig.getRandomAsteroids(), true);
+			simulatedSpace.addObject(asteroid);
+		}
+
+		// respawn any objects that should respawn - this includes Flags)
+		simulatedSpace.respawnDeadObjects(random);
 
 		// spawn new asteroids with a small probability (up to the maximum number allowed)
 		int maxAsteroids = simConfig.getRandomAsteroids().getMaximumNumberAsteroids();
@@ -725,7 +732,12 @@ public final class SpaceSettlersSimulator {
 		if (numAsteroids < maxAsteroids) {
 			if (random.nextDouble() < ASTEROID_SPAWN_PROBABILITY) {
 				//System.out.println("Spawning a new asteroid");
-				Asteroid asteroid = createNewRandomAsteroid(simConfig.getRandomAsteroids());
+				boolean mineable = false;
+				if (random.nextDouble() < simConfig.getRandomAsteroids().getProbabilityMineable()) {
+					mineable = true;
+				}
+				
+				Asteroid asteroid = createNewRandomAsteroid(simConfig.getRandomAsteroids(), mineable);
 				simulatedSpace.addObject(asteroid);
 			}
 		}
@@ -986,6 +998,12 @@ public final class SpaceSettlersSimulator {
 						(1000 * ((team.getTotalKillsReceived() + 1) * team.getTotalKillsReceived()) / 2.0) + 
 						(team.getSummedTotalResources() / 2.0));				
 			}
+		} else if (simConfig.getScoringMethod().equalsIgnoreCase("KillDeathRatio")) {
+			for (Team team : teams) {
+				// adding one to the denominator to handle divide by zero issues
+				team.setScore(team.getTotalKillsInflicted() / (team.getTotalKillsReceived() + 1.0));			
+			}
+			
 		} else if (simConfig.getScoringMethod().equalsIgnoreCase("Cores")) {
 			for (Team team : teams) {
 				team.setScore(team.getTotalCoresCollected());				

@@ -31,10 +31,6 @@
 		     to the configuration file for that team.  Also, teams can have initial bounding boxes
 		     which bound where the ships and the base will be created. -->
 		<HighLevelTeamConfig>
-			<teamName>Bost-Atkinson Digital Space Mining</teamName>
-			<configFile>spacesettlersinit.xml</configFile>
-		</HighLevelTeamConfig>
-		<HighLevelTeamConfig>
 			<teamName>RandomClient</teamName>
 			<configFile>random-clientinit.xml</configFile>
 		</HighLevelTeamConfig>
@@ -56,7 +52,7 @@
 	<!-- Each team needs a base.  Optionally, you can initialize the location of the base -->
 	<bases>
 		<BaseConfig>
-			<teamName>Bost-Atkinson Digital Space Mining</teamName>
+			<teamName>DoNothingTeam</teamName>
 		</BaseConfig>
 		<BaseConfig>
 			<teamName>RandomClient</teamName>
@@ -65,7 +61,7 @@
 			<teamName>BeaconCollectorTeam</teamName>
 		</BaseConfig>
 		<BaseConfig>
-			<teamName>DoNothingTeam</teamName>
+			<teamName>HumanTeam</teamName>
 		</BaseConfig>
 		<BaseConfig>
 			<teamName>HeuristicMinerTeam</teamName>

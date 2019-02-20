@@ -5,7 +5,6 @@ import spacesettlers.objects.Ship;
 import spacesettlers.objects.AbstractActionableObject;
 import spacesettlers.objects.powerups.SpaceSettlersPowerupEnum;
 import spacesettlers.utilities.Position;
-import spacesettlers.utilities.Vector2D;
 
 /**
  * A bullet/missle
@@ -25,7 +24,7 @@ public final class Missile extends AbstractWeapon {
 	 */
 	public Missile(Position position, Ship firingShip) {
 		super(MISSILE_MASS, MISSILE_RADIUS, position, MISSILE_DAMAGE, MISSILE_COST,firingShip);
-		super.shiftWeaponFiringLocation(INITIAL_VELOCITY);
+		super.shiftWeaponFiringLocation(Math.abs(firingShip.getPosition().getTotalTranslationalVelocity()) + INITIAL_VELOCITY);
 		graphic = new MissileGraphics(this);
 		setDrawable(true);
 		setAlive(true);

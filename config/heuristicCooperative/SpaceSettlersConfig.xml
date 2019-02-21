@@ -47,6 +47,9 @@
 			<!-- Pick the one you intend to play against (self versus other) -->
 			<configFile>passive-heuristic-clientinit.xml</configFile>
 		</HighLevelTeamConfig>
+		<HighLevelTeamConfig>
+			<teamName>BDSMFriendy</teamName>
+			<configFile>spacesettlersinit.xml</configFile></HighLevelTeamConfig>
 	</teams>
 
 	<!-- Each team needs a base.  Optionally, you can initialize the location of the base -->
@@ -61,7 +64,7 @@
 			<teamName>BeaconCollectorTeam</teamName>
 		</BaseConfig>
 		<BaseConfig>
-			<teamName>HumanTeam</teamName>
+			<teamName>BDSMFriendy</teamName>
 		</BaseConfig>
 		<BaseConfig>
 			<teamName>HeuristicMinerTeam</teamName>

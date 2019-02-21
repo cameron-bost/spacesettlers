@@ -1,6 +1,8 @@
 package spacesettlers.bost7517;
 
 import java.awt.Color;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -48,7 +50,7 @@ import spacesettlers.utilities.Vector2D;
  */
 public class BDSMFriendyReflexAgent extends TeamClient {
 	private boolean debug = false;
-	private boolean showMyGraphics = false;
+	private boolean showMyGraphics = true;
 	HashMap <UUID, Ship> asteroidToShipMap;
 	HashMap <UUID, Boolean> aimingForBase;
 	HashMap <UUID, Boolean> justHitBase;
@@ -117,16 +119,40 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 		Position currentPosition = ship.getPosition();
 		// update previous action
 		previousAction = current;
+		
 		if(showMyGraphics)
 		{
-			if(stepCount > 100)
-			{
-				System.out.println("<DEBUG HERE> - " + stepCount);
-				stepCount = 0;
-				return current;
-			}
+			System.out.println("<<INIT GRID MAPPING>> -- " + space.getHeight());
+			graphicsToAdd = new ArrayList<SpacewarGraphics>();
 			
-			System.out.println("<DEBUG HERE test> - " + stepCount);
+			//create columns
+			Position heightBottom = new Position(0,0);
+			Position heightTop = new Position(0,space.getHeight());
+				
+		    for (int i = 30; i <= space.getWidth()+100; i = i + 30)
+		    {
+		    	Vector2D te = new Vector2D(0,space.getHeight());
+		    	LineGraphics t= new LineGraphics(heightBottom,heightTop,te);
+				heightBottom = new Position(i,0);
+				heightTop = new Position(i,space.getHeight());
+				t.setLineColor(Color.white);
+				graphicsToAdd.add(t);
+		    }
+		    
+			heightBottom = new Position(0,0);
+			heightTop = new Position(space.getWidth(),0);
+		    
+		    for (int i = 30; i <= space.getHeight(); i = i + 30)
+		    {
+		    	Vector2D te = new Vector2D(space.getWidth(),0);
+		    	LineGraphics t= new LineGraphics(heightBottom,heightTop,te);
+				heightBottom = new Position(0,i);
+				heightTop = new Position(space.getWidth(),i);
+				t.setLineColor(Color.white);
+				graphicsToAdd.add(t);
+		    }
+		    
+		    
 		}
 		
 		// Rule 1. If energy is low, go for nearest energy source
@@ -173,8 +199,7 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 			
 			// Get best asteroid
 			Asteroid asteroid = pickHighestValueNearestFreeAsteroid(space, ship);
-			if (showMyGraphics)
-			{
+			
 				//CREATE A LINE From the ship to the current target asteroid.
 				graphicsToAdd.add(new StarGraphics(3, this.getTeamColor(), asteroid.getPosition()));
 				LineGraphics line = new LineGraphics(ship.getPosition(), asteroid.getPosition(), 
@@ -183,7 +208,7 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 				line.setLineColor(this.getTeamColor());
 				graphicsToAdd.add(line);
 				//Create N number of objects;
-				
+				/*
 				for(int i = 0; i < 20 ;i++)
 				{
 					
@@ -200,8 +225,7 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 					double randomyValue = shipyValue + (asteroidyValue - shipyValue) * rand.nextDouble();
 					Position middle = new Position (randomxValue,randomyValue);
 					graphicsToAdd.add(new CircleGraphics(Color.WHITE,middle));
-				}
-			}
+				}*/
 			AbstractAction newAction = null;
 			
 			if (asteroid != null) {
@@ -333,7 +357,20 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 		justHitBase = new HashMap<UUID, Boolean>();
 		if(showMyGraphics)
 		{
+			System.out.println("<<INIT GRID MAPPING>>");
 			graphicsToAdd = new ArrayList<SpacewarGraphics>();
+			Position heightBottom = new Position(0,30);
+			Position heightTop = new Position(space.getHeight(),30);
+				
+		    for (int i = 30; i < 1000; i = i + 30)
+		    {
+		    	LineGraphics t= new LineGraphics(heightTop,heightBottom,space.findShortestDistanceVector(heightBottom, heightTop));;
+				heightBottom = new Position(0,i);
+				heightTop = new Position(space.getHeight(),i);
+				t.setLineColor(Color.white);
+				graphicsToAdd.add(t);
+		    }
+		    
 		}
 		
 		XStream xstream = new XStream();

@@ -12,7 +12,8 @@ public class AStarGraph {
 	 * @param _width
 	 * @param asteroidRadius
 	 */
-	AStarGraph(int _height, int _width, int asteroidRadius){
+	AStarGraph(int _height, int _width, int asteroidRadius)
+	{
 		int graphWidth = _width / asteroidRadius, graphHeight = _height / asteroidRadius;
 		
 	}

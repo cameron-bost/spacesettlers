@@ -8,8 +8,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.XStreamException;
@@ -22,6 +24,7 @@ import spacesettlers.actions.PurchaseCosts;
 import spacesettlers.actions.PurchaseTypes;
 import spacesettlers.clients.ExampleKnowledge;
 import spacesettlers.clients.TeamClient;
+import spacesettlers.graphics.CircleGraphics;
 import spacesettlers.graphics.LineGraphics;
 import spacesettlers.graphics.SpacewarGraphics;
 import spacesettlers.graphics.StarGraphics;
@@ -45,6 +48,7 @@ import spacesettlers.utilities.Vector2D;
  */
 public class BDSMFriendyReflexAgent extends TeamClient {
 	private boolean debug = false;
+	private boolean showMyGraphics = false;
 	HashMap <UUID, Ship> asteroidToShipMap;
 	HashMap <UUID, Boolean> aimingForBase;
 	HashMap <UUID, Boolean> justHitBase;
@@ -113,8 +117,17 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 		Position currentPosition = ship.getPosition();
 		// update previous action
 		previousAction = current;
-		
-		
+		if(showMyGraphics)
+		{
+			if(stepCount > 100)
+			{
+				System.out.println("<DEBUG HERE> - " + stepCount);
+				stepCount = 0;
+				return current;
+			}
+			
+			System.out.println("<DEBUG HERE test> - " + stepCount);
+		}
 		
 		// Rule 1. If energy is low, go for nearest energy source
 		if (ship.getEnergy() < LOW_ENERGY_THRESHOLD) {
@@ -135,6 +148,7 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 					System.out.println("Energy target returned null");
 				}
 			}
+			stepCount++;
 			return newAction;
 		}
 
@@ -146,6 +160,7 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 			if(debug){
 				System.out.println("<Action Declaration> - Deposit (" + ship.getResources().getTotal()+")");
 			}
+			stepCount++;
 			return newAction;
 		}
 
@@ -158,14 +173,35 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 			
 			// Get best asteroid
 			Asteroid asteroid = pickHighestValueNearestFreeAsteroid(space, ship);
-			
-			graphicsToAdd.add(new StarGraphics(3, this.getTeamColor(), asteroid.getPosition()));
-			LineGraphics line = new LineGraphics(ship.getPosition(), asteroid.getPosition(), 
-					space.findShortestDistanceVector(ship.getPosition(), asteroid.getPosition()));
-			
-			line.setLineColor(this.getTeamColor());
-			graphicsToAdd.add(line);
-			
+			if (showMyGraphics)
+			{
+				//CREATE A LINE From the ship to the current target asteroid.
+				graphicsToAdd.add(new StarGraphics(3, this.getTeamColor(), asteroid.getPosition()));
+				LineGraphics line = new LineGraphics(ship.getPosition(), asteroid.getPosition(), 
+						space.findShortestDistanceVector(ship.getPosition(), asteroid.getPosition()));
+				
+				line.setLineColor(this.getTeamColor());
+				graphicsToAdd.add(line);
+				//Create N number of objects;
+				
+				for(int i = 0; i < 20 ;i++)
+				{
+					
+					double shipxValue = ship.getPosition().getX();
+					double asteroidxValue = asteroid.getPosition().getX();
+					double shipyValue = ship.getPosition().getY();
+					double asteroidyValue = asteroid.getPosition().getY();
+					
+					//double randomX = ThreadLocalRandom.current().nextDouble(shipxValue, asteroidxValue);
+					//double randomY = ThreadLocalRandom.current().nextDouble(shipyValue, asteroidyValue);
+					
+					Random rand = new Random();
+					double randomxValue = shipxValue + (asteroidxValue - shipxValue) * rand.nextDouble();
+					double randomyValue = shipyValue + (asteroidyValue - shipyValue) * rand.nextDouble();
+					Position middle = new Position (randomxValue,randomyValue);
+					graphicsToAdd.add(new CircleGraphics(Color.WHITE,middle));
+				}
+			}
 			AbstractAction newAction = null;
 			
 			if (asteroid != null) {
@@ -180,12 +216,14 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 					System.out.println("<Action Declaration> - Chasing asteroid");
 					System.out.println("<Velocity Check> - "+ship.getPosition().getTranslationalVelocity());
 				}
+				stepCount++;
 				return newAction;
 			}
 		}
 		if(debug) {
 			System.out.println("<Action Declaration> - Continuing action...");
 		}
+		stepCount++;
 		return ship.getCurrentAction();
 	}
 	
@@ -293,7 +331,10 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 		asteroidToShipMap = new HashMap<UUID, Ship>();
 		aimingForBase = new HashMap<UUID, Boolean>();
 		justHitBase = new HashMap<UUID, Boolean>();
-		graphicsToAdd = new ArrayList<SpacewarGraphics>();
+		if(showMyGraphics)
+		{
+			graphicsToAdd = new ArrayList<SpacewarGraphics>();
+		}
 		
 		XStream xstream = new XStream();
 		xstream.alias("ExampleKnowledge", ExampleKnowledge.class);
@@ -331,10 +372,14 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 
 	@Override
 	public Set<SpacewarGraphics> getGraphics() {
-		HashSet<SpacewarGraphics> graphics = new HashSet<SpacewarGraphics>();
-		graphics.addAll(graphicsToAdd);
-		graphicsToAdd.clear();
-		return graphics;
+		if(showMyGraphics)
+		{
+			HashSet<SpacewarGraphics> graphics = new HashSet<SpacewarGraphics>();
+			graphics.addAll(graphicsToAdd);
+			graphicsToAdd.clear();
+			return graphics;
+		}
+		return null;
 	}
 
 	@Override

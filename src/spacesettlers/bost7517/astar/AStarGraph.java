@@ -1,6 +1,7 @@
 package spacesettlers.bost7517.astar;
 
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.PriorityQueue;
 import java.util.Set;
 
@@ -29,18 +30,31 @@ public class AStarGraph {
 	/**Size of one grid unit*/
 	public static final int GRID_SIZE = Asteroid.MAX_ASTEROID_RADIUS*2;
 	
+	/**Indicates whether to perform debug processes*/
+	private boolean debug;
+	
+	/**Search tree from most recent plan*/
+	private LinkedList<AStarPath> searchTree;
 	
 	/**
 	 * Constructor for graph. Window parameters and asteroid radius are required.
 	 * 
 	 * @param windowHeight height of simulated environment
 	 * @param windowWidth width of simulated environment
-	 * @param asteroidRadius max asteroid radius
+	 * @param _debug indicates debug status
 	 */
-	public AStarGraph(int windowHeight, int windowWidth){
+	public AStarGraph(int windowHeight, int windowWidth, boolean _debug){
 		mtxCols = windowWidth / GRID_SIZE;
 		mtxRows = windowHeight / GRID_SIZE;
-		
+		debug = _debug;
+		searchTree = new LinkedList<>();
+		initMatrix();
+	}
+	
+	/**
+	 * Initializes the vertex matrix, connects edges
+	 */
+	private void initMatrix() {
 		// Init vertex matrix
 		vMtx = new Vertex[mtxRows][mtxCols];
 		for(int row = 0; row < mtxRows; row++) 
@@ -74,6 +88,10 @@ public class AStarGraph {
 	 * @return AStarPath object containing sequence of positions to travel to for optimal 
 	 */
 	public AStarPath getPathTo(Ship ship, AbstractObject target, Toroidal2DPhysics space) {
+		// Debug: clear previous search tree
+		if(debug) {
+			searchTree.clear();
+		}
 		// Clear heuristic values
 		clearHeuristics();
 		// Get vertex containing ship, mark as start
@@ -90,7 +108,7 @@ public class AStarGraph {
 		PriorityQueue<AStarPath> q = new PriorityQueue<>();
 		
 		// Add start vertex to queue
-		q.add(AStarPath.makePath(vShip));
+		q.add(AStarPath.makePath(this, vShip));
 		
 		// While queue is not empty and found is false
 		boolean found = false;
@@ -98,13 +116,17 @@ public class AStarGraph {
 		while(!found && !q.isEmpty()) {
 			// Get next value from queue
 			AStarPath thisPath = q.poll();
+			// Debug: add path to search tree
+			if(debug) {
+				searchTree.add(thisPath);
+			}
 			if(thisPath.getCurrentVertex().isEnd()) {
 				bestSoFar = thisPath;
 				break;
 			}
 			// For each child, create a new path that moves to it, add to queue
 			for(Vertex child: thisPath.getCurrentVertex().getEdges()) {
-				AStarPath childPath = AStarPath.duplicatePath(thisPath);
+				AStarPath childPath = AStarPath.duplicatePath(this, thisPath);
 				childPath.addVertex(child);
 				q.add(childPath);
 			}
@@ -213,4 +235,11 @@ public class AStarGraph {
 		return vMtx[row][col];
 	}
 
+	/**
+	 * Gets the most recently planned search tree
+	 * @return Search tree from most recent call to getPathTo
+	 */
+	public LinkedList<AStarPath> getSearchTree(){
+		return searchTree;
+	}
 }

@@ -86,4 +86,12 @@ public class Vertex {
 	List<Vertex> getEdges(){
 		return connectedVertices;
 	}
+	
+	/**
+	 * Allows graph class to add vertex to edge list
+	 * @param v Vertex to add to edges
+	 */
+	void addEdge(Vertex v) {
+		connectedVertices.add(v);
+	}
 }

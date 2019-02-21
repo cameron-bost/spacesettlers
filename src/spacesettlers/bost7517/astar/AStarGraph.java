@@ -42,10 +42,19 @@ public class AStarGraph {
 				vMtx[row][col] = new Vertex(col, row);
 			
 		
-		// TODO: For each vertex, connect the four cardinal directions
+		// For each vertex, connect the four cardinal directions
 		// TODO: Can we do all 8 cardinal directions?
 		for(int row = 0; row < mtxRows; row++) {
 			for(int col = 0; col < mtxCols; col++) {
+				Vertex thisVertex = vMtx[row][col];
+				int up = (row == 0 ? mtxRows - 1 : row - 1);
+				thisVertex.addEdge(vMtx[up][col]);
+				int down = (row+1) % mtxRows;
+				thisVertex.addEdge(vMtx[down][col]);
+				int left = (col == 0 ? mtxCols - 1 : col - 1);
+				thisVertex.addEdge(vMtx[row][left]);
+				int right = (col+1) % mtxCols;
+				thisVertex.addEdge(vMtx[row][right]);
 			}
 		}
 	}
@@ -60,10 +69,6 @@ public class AStarGraph {
 	 */
 	public AStarPath getPathTo(Position shipPosition, Position targetPosition, Toroidal2DPhysics space) {
 		return null;
-	}
-	
-	void addEdge(Vertex v1, Vertex v2) {
-		// TODO: Implement
 	}
 	
 	/**

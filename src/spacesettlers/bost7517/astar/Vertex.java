@@ -94,4 +94,47 @@ public class Vertex {
 	void addEdge(Vertex v) {
 		connectedVertices.add(v);
 	}
+
+	/**
+	 * Marks this vertex as the start vertex
+	 */
+	void markStart() {
+		isStart = true;
+	}
+
+	/**
+	 * Marks this vertex as not the start verte
+	 */
+	void markNotStart() {
+		isStart = false;
+	}
+
+	/**
+	 * Marks this vertex as the target vertex
+	 */
+	void markEnd() {
+		isEnd = true;
+	}
+
+	/**
+	 * Marks this vertex as not the target vertex
+	 */
+	void markNotEnd() {
+		isEnd = false;
+	}
+
+	/**
+	 * Sets the heuristic value for this node to 0
+	 */
+	void clearHValue() {
+		hValue = 0;
+	}
+	
+	/**
+	 * Sets the heuristic value for this vertex to the specified value
+	 * @param _hValue value to set heuristic to
+	 */
+	void setHValue(double _hValue) {
+		hValue = _hValue;
+	}
 }

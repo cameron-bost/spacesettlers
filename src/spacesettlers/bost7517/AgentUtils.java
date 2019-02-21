@@ -212,9 +212,9 @@ public class AgentUtils {
 	/**
 	 * Large boolean statement determining whether or not the object is a threat to the agent.
 	 * Considers whether or not the object is the ship itself, or dead, or of a collectible type
-	 * @param ship
-	 * @param object
-	 * @return
+	 * @param ship Current ship object
+	 * @param object Object being considered
+	 * @return Whether or not object is a threat
 	 */
 	static boolean isDangerous(Ship ship, AbstractObject object) {
 		return !(object.getId().equals(ship.getId()) || !object.isAlive() 
@@ -224,5 +224,18 @@ public class AgentUtils {
 				|| (object instanceof Base && ((Base) object).getTeamName().equals(ship.getTeamName())));
 	}
 
+	/**
+	 * Determines if an object is viewed as an obstacle by the ship
+	 * @param ship Ship checking for obstacle
+	 * @param object Object that might be an obstacle
+	 * @return Whether object is an obstacle
+	 */
+	public static boolean isObstacle(Ship ship, AbstractObject object) {
+		return object.getId().equals(ship.getId()) || !object.isAlive() 
+				|| object instanceof Missile || object instanceof Beacon
+				|| object instanceof AiCore 
+				|| (object instanceof Asteroid && !((Asteroid) object).isMineable())
+				|| object instanceof Base;
+	}
 
 }

@@ -1,5 +1,11 @@
 package spacesettlers.bost7517.astar;
 
+import java.util.HashSet;
+import java.util.Set;
+
+import spacesettlers.bost7517.AgentUtils;
+import spacesettlers.objects.AbstractObject;
+import spacesettlers.objects.Ship;
 import spacesettlers.simulator.Toroidal2DPhysics;
 import spacesettlers.utilities.Position;
 
@@ -62,13 +68,106 @@ public class AStarGraph {
 	/**
 	 * Calculates a sequence of positions to travel to in order for the ship to reach the target position.
 	 * 
-	 * @param shipPosition Ship's current position
-	 * @param targetPosition Target's current position
+	 * @param ship The ship checking for a path
+	 * @param target Target object
 	 * @param space {@link Toroidal2DPhysics} model
 	 * @return AStarPath object containing sequence of positions to travel to for optimal 
 	 */
-	public AStarPath getPathTo(Position shipPosition, Position targetPosition, Toroidal2DPhysics space) {
+	public AStarPath getPathTo(Ship ship, AbstractObject target, Toroidal2DPhysics space) {
+		// Clear heuristic values (possibly from previous run)
+		clearHeuristics();
+		// Get vertex containing ship, mark as start
+		Vertex vShip = getVertex(ship.getPosition());
+		vShip.markStart();
+		// Get vertex containing target, mark as target
+		Vertex vTarget = getVertex(target.getPosition());
+		vTarget.markEnd();
+		
+		// Set heuristic values
+		setHeuristics(space, ship, target);
+
+		// TODO: Actual AStar algorithm
+		
+		// Cleanup
+		vTarget.markNotEnd();
+		vShip.markNotStart();
 		return null;
+	}
+	
+	/**
+	 * Resets all heuristic values to 0
+	 */
+	private void clearHeuristics() {
+		for(int r = 0; r < mtxRows; r++) {
+			for(int c = 0; c < mtxCols; c++) {
+				vMtx[r][c].clearHValue();
+			}
+		}
+	}
+
+	/**
+	 * Computes heuristic values for all vertices, marking vertices 
+	 * with obstacles in them with max heuristic values.
+	 * 
+	 * @param space Toroidal2DPhysics model for the game
+	 * @param ship Ship checking for path
+	 * @param targetPosition Target's position
+	 */
+	private void setHeuristics(Toroidal2DPhysics space, Ship ship, AbstractObject target) {
+		// Load all current obstructions (i.e. objects that are dangerous to the ship)
+		Set<AbstractObject> obstructions = new HashSet<>();
+		for(AbstractObject obj: space.getAllObjects()) {
+			// If object is viewed as an obstacle and is NOT the target, it is an obstruction
+			if(AgentUtils.isObstacle(ship, obj) && !obj.getId().equals(target.getId())) {
+				obstructions.add(obj);
+			}
+		}
+		
+		// Set heuristic values for all vertices
+		for(int row = 0; row < mtxRows; row++) {
+			for(int col = 0; col < mtxCols; col++) {
+				// Get vertex at this position
+				Vertex v = vMtx[row][col];
+				Position posV = getCentralCoordinate(v);
+
+				// Set heuristic value
+				double heuristicValue = 0.0;
+				// If target node, 
+				if(v.isEnd()) {
+					v.setHValue(0.0);
+				}
+				if(gridIsClearOfObstacles(space, obstructions, posV)) {
+					// If no obstacles in this grid, set heuristic to distance between central point and the target
+					heuristicValue = space.findShortestDistance(posV, target.getPosition());
+				}
+				// If obstruction exists, set H value to max integer value
+				else {
+					heuristicValue = Double.MAX_VALUE;
+				}
+				v.setHValue(heuristicValue);
+			}
+		}
+		obstructions.clear();
+	}
+	
+	/**
+	 * Checks if a vertex contains any obstacles by performing
+	 * two vertical sweeps with radius gridSize/4. Small pockets are 
+	 * left unchecked, but are too small to contain obstacles.
+	 * 
+	 * @param space physics model for the game
+	 * @param obstructions set of obstructions to check for
+	 * @param pc central coordinate of vertex to check for obstacles
+	 * @return whether this vertex is clear of obstacles (true -> no obstacles)
+	 */
+	private boolean gridIsClearOfObstacles(Toroidal2DPhysics space, Set<AbstractObject> obstructions, Position pc) {
+		int quarterG = gridUnitSize/4;
+		Position pi1 = new Position(pc.getX()+quarterG, pc.getY() - quarterG);
+		Position pf1 = new Position(pc.getX()+quarterG, pc.getY() + quarterG);
+		Position pi2 = new Position(pc.getX()-quarterG, pc.getY() - quarterG);
+		Position pf2 = new Position(pc.getX()-quarterG, pc.getY() + quarterG);
+		return space.isPathClearOfObstructions(pi1, pf1, obstructions, quarterG)
+				&& space.isPathClearOfObstructions(pi2, pf2, obstructions, quarterG);
 	}
 	
 	/**
@@ -78,6 +177,18 @@ public class AStarGraph {
 	 */
 	Position getCentralCoordinate(Vertex v) {
 		return new Position(v.getMtxColumn()*gridUnitSize + (gridUnitSize/2), v.getMtxRow()*gridUnitSize + (gridUnitSize/2));
+	}
+	
+	/**
+	 * Gets the corresponding vertex for some position on the screen.
+	 * 
+	 * @param p position to get vertex for
+	 * @return Vertex containing the position
+	 */
+	Vertex getVertex(Position p) {
+		int row = (int) (p.getY() / mtxRows);
+		int col = (int) (p.getX() / mtxCols);
+		return vMtx[row][col];
 	}
 
 }

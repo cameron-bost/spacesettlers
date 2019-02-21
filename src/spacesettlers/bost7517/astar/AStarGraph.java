@@ -1,10 +1,12 @@
 package spacesettlers.bost7517.astar;
 
 import java.util.HashSet;
+import java.util.PriorityQueue;
 import java.util.Set;
 
 import spacesettlers.bost7517.AgentUtils;
 import spacesettlers.objects.AbstractObject;
+import spacesettlers.objects.Asteroid;
 import spacesettlers.objects.Ship;
 import spacesettlers.simulator.Toroidal2DPhysics;
 import spacesettlers.utilities.Position;
@@ -25,7 +27,7 @@ public class AStarGraph {
 	private int mtxCols, mtxRows;
 	
 	/**Size of one grid unit*/
-	private int gridUnitSize;
+	public static final int GRID_SIZE = Asteroid.MAX_ASTEROID_RADIUS*2;
 	
 	
 	/**
@@ -35,11 +37,9 @@ public class AStarGraph {
 	 * @param windowWidth width of simulated environment
 	 * @param asteroidRadius max asteroid radius
 	 */
-	public AStarGraph(int windowHeight, int windowWidth, int asteroidRadius){
-		int gridSize = asteroidRadius * 2;
-		mtxCols = windowWidth / gridSize;
-		mtxRows = windowHeight / gridSize;
-		gridUnitSize = gridSize;
+	public AStarGraph(int windowHeight, int windowWidth){
+		mtxCols = windowWidth / GRID_SIZE;
+		mtxRows = windowHeight / GRID_SIZE;
 		
 		// Init vertex matrix
 		vMtx = new Vertex[mtxRows][mtxCols];
@@ -74,7 +74,7 @@ public class AStarGraph {
 	 * @return AStarPath object containing sequence of positions to travel to for optimal 
 	 */
 	public AStarPath getPathTo(Ship ship, AbstractObject target, Toroidal2DPhysics space) {
-		// Clear heuristic values (possibly from previous run)
+		// Clear heuristic values
 		clearHeuristics();
 		// Get vertex containing ship, mark as start
 		Vertex vShip = getVertex(ship.getPosition());
@@ -85,13 +85,35 @@ public class AStarGraph {
 		
 		// Set heuristic values
 		setHeuristics(space, ship, target);
-
-		// TODO: Actual AStar algorithm
 		
+		// Init priority queue
+		PriorityQueue<AStarPath> q = new PriorityQueue<>();
+		
+		// Add start vertex to queue
+		q.add(AStarPath.makePath(vShip));
+		
+		// While queue is not empty and found is false
+		boolean found = false;
+		AStarPath bestSoFar = null;
+		while(!found && !q.isEmpty()) {
+			// Get next value from queue
+			AStarPath thisPath = q.poll();
+			if(thisPath.getCurrentVertex().isEnd()) {
+				bestSoFar = thisPath;
+				break;
+			}
+			// For each child, create a new path that moves to it, add to queue
+			for(Vertex child: thisPath.getCurrentVertex().getEdges()) {
+				AStarPath childPath = AStarPath.duplicatePath(thisPath);
+				childPath.addVertex(child);
+				q.add(childPath);
+			}
+		}
+		q.clear();
 		// Cleanup
 		vTarget.markNotEnd();
 		vShip.markNotStart();
-		return null;
+		return bestSoFar;
 	}
 	
 	/**
@@ -152,7 +174,7 @@ public class AStarGraph {
 	
 	/**
 	 * Checks if a vertex contains any obstacles by performing
-	 * two vertical sweeps with radius gridSize/4. Small pockets are 
+	 * two vertical sweeps with radius GRID_SIZE/4. Small pockets are 
 	 * left unchecked, but are too small to contain obstacles.
 	 * 
 	 * @param space physics model for the game
@@ -161,7 +183,7 @@ public class AStarGraph {
 	 * @return whether this vertex is clear of obstacles (true -> no obstacles)
 	 */
 	private boolean gridIsClearOfObstacles(Toroidal2DPhysics space, Set<AbstractObject> obstructions, Position pc) {
-		int quarterG = gridUnitSize/4;
+		int quarterG = GRID_SIZE/4;
 		Position pi1 = new Position(pc.getX()+quarterG, pc.getY() - quarterG);
 		Position pf1 = new Position(pc.getX()+quarterG, pc.getY() + quarterG);
 		Position pi2 = new Position(pc.getX()-quarterG, pc.getY() - quarterG);
@@ -176,7 +198,7 @@ public class AStarGraph {
 	 * @return Position object representing the center of a vertex grid square
 	 */
 	Position getCentralCoordinate(Vertex v) {
-		return new Position(v.getMtxColumn()*gridUnitSize + (gridUnitSize/2), v.getMtxRow()*gridUnitSize + (gridUnitSize/2));
+		return new Position(v.getMtxColumn()*GRID_SIZE + (GRID_SIZE/2), v.getMtxRow()*GRID_SIZE + (GRID_SIZE/2));
 	}
 	
 	/**

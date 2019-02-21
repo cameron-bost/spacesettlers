@@ -9,7 +9,7 @@ import spacesettlers.utilities.Position;
  * @author Cameron Bost
  * @version 0.2
  */
-public class AStarPath {
+public class AStarPath implements Comparable<AStarPath>{
 	/**List of vertices traveled to*/
 	private LinkedList<Vertex> vertices = new LinkedList<>();
 	
@@ -19,7 +19,7 @@ public class AStarPath {
 	/**
 	 * No constructor arguments
 	 */
-	public AStarPath() {
+	private AStarPath() {
 		totalCost = 0;
 		vertices = new LinkedList<>();
 	}
@@ -33,11 +33,15 @@ public class AStarPath {
 	}
 	
 	/**
-	 * Adds a vertex to this path
+	 * Adds a vertex to this path and updates cost
+	 * 
 	 * @param v Vertex to add to path
 	 */
 	void addVertex(Vertex v) {
-		vertices.add(v);
+		if(!vertices.contains(v)) {
+			vertices.add(v);
+			totalCost += AStarGraph.GRID_SIZE;
+		}
 	}
 	
 	/**
@@ -45,6 +49,42 @@ public class AStarPath {
 	 * @return List of positions to travel to in this path
 	 */
 	public LinkedList<Position> getPositions() {
+		// TODO: Set as positions
 		return null;
+	}
+	
+	Vertex getCurrentVertex() {
+		return vertices.getLast();
+	}
+
+	@Override
+	public int compareTo(AStarPath otherPath) {
+		double value = totalCost + vertices.getLast().getHValue();
+		double otherValue = otherPath.totalCost + otherPath.vertices.getLast().getHValue();
+		return Double.compare(value, otherValue);
+	}
+	
+	/**
+	 * Creates a path object from an initial vertex
+	 * @param v initial vertex
+	 * @return Path object with v as initial vertex
+	 */
+	static AStarPath makePath(Vertex v) {
+		AStarPath ret = new AStarPath();
+		ret.addVertex(v);
+		return ret;
+	}
+	
+	/**
+	 * Factory method to create a duplicate of an existing path
+	 * @param p path to duplicate
+	 * @return duplicate of parameter path
+	 */
+	static AStarPath duplicatePath(AStarPath p) {
+		AStarPath ret = new AStarPath();
+		for(Vertex v: p.vertices) {
+			ret.addVertex(v);
+		}
+		return ret;
 	}
 }

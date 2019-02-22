@@ -9,6 +9,7 @@ import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -25,6 +26,9 @@ import spacesettlers.actions.MoveAction;
 import spacesettlers.actions.MoveToObjectAction;
 import spacesettlers.actions.PurchaseCosts;
 import spacesettlers.actions.PurchaseTypes;
+import spacesettlers.bost7517.astar.AStarGraph;
+import spacesettlers.bost7517.astar.AStarPath;
+import spacesettlers.bost7517.astar.Vertex;
 import spacesettlers.clients.ExampleKnowledge;
 import spacesettlers.clients.TeamClient;
 import spacesettlers.graphics.CircleGraphics;
@@ -225,40 +229,31 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 				line.setLineColor(this.getTeamColor());
 				graphicsToAdd.add(line);
 			}
-				//Create N number of objects;
-				/*
-				for(int i = 0; i < 20 ;i++)
-				{
-					
-					double shipxValue = ship.getPosition().getX();
-					double asteroidxValue = asteroid.getPosition().getX();
-					double shipyValue = ship.getPosition().getY();
-					double asteroidyValue = asteroid.getPosition().getY();
-					
-					//double randomX = ThreadLocalRandom.current().nextDouble(shipxValue, asteroidxValue);
-					//double randomY = ThreadLocalRandom.current().nextDouble(shipyValue, asteroidyValue);
-					
-					Random rand = new Random();
-					double randomxValue = shipxValue + (asteroidxValue - shipxValue) * rand.nextDouble();
-					double randomyValue = shipyValue + (asteroidyValue - shipyValue) * rand.nextDouble();
-					Position middle = new Position (randomxValue,randomyValue);
-					graphicsToAdd.add(new CircleGraphics(Color.WHITE,middle));
-				}*/
 			AbstractAction newAction = null;
 			
 			if (asteroid != null) {
 				asteroidToShipMap.put(asteroid.getId(), ship);
 				
-				//newAction = new MoveAction(space,currentPosition,asteroid.getPosition());
-				newAction = new BDSMMoveToObjectAction(space, currentPosition, asteroid, 
-						asteroid.getPosition().getTranslationalVelocity());			
+				
+				AStarGraph StarGraph = new AStarGraph(space.getHeight(),space.getWidth(),true);
+				AStarPath aPath = new AStarPath(StarGraph);
+				System.out.println("<Right above for loop> " + StarGraph.getSearchTree().size());
+				
+				
+				//newAction = new BDSMMoveToObjectAction(space, currentPosition, asteroid, 
+				//		asteroid.getPosition().getTranslationalVelocity());			
+				
+				
 				
 				if(debug)
 				{
 					System.out.println("<Action Declaration> - Chasing asteroid");
 					System.out.println("<Velocity Check> - "+ship.getPosition().getTranslationalVelocity());
 				}
+	
+				
 				stepCount++;
+				
 				return newAction;
 			}
 		}

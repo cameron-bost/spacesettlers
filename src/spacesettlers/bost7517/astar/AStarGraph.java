@@ -102,33 +102,73 @@ public class AStarGraph {
 		vTarget.markEnd();
 		
 		// Set heuristic values
+		if(debug) {
+			System.out.println("<AStarGraph.getPathTo> - Setting heuristics...");
+		}
 		setHeuristics(space, ship, target);
-		
+		if(debug) {
+			System.out.println("<AStarGraph.getPathTo> - Finished setting heuristics...");
+		}
 		// Init priority queue
 		PriorityQueue<AStarPath> q = new PriorityQueue<>();
-		
-		// Add start vertex to queue
-		q.add(AStarPath.makePath(this, vShip));
-		
+		try {
+			// Add start vertex to queue
+			q.add(AStarPath.makePath(this, vShip));
+		}catch(DuplicatePathException e) {
+			if(debug){
+				System.out.println("<AStarGraph.getPathTo> - Duplicate path found.");
+			}
+		}
 		// While queue is not empty and found is false
 		boolean found = false;
 		AStarPath bestSoFar = null;
+		int debugDepthCount = 0;
+		int lowestCostSoFar = Integer.MAX_VALUE;
 		while(!found && !q.isEmpty()) {
 			// Get next value from queue
 			AStarPath thisPath = q.poll();
+			if(debug){
+				lowestCostSoFar = Math.min(thisPath.getQueueValue(), lowestCostSoFar);
+			}
+			if(debug && debugDepthCount++ % 1000 == 0) {
+//				debugDepthCount++;
+				// Debug print code
+//				System.out.println("*****************************");
+//				System.out.println("AStarGraph.getPathTo> - At option #"+debugDepthCount+", cost="+thisPath.getQueueValue());
+//				System.out.println("Matrix size: rows="+mtxRows+",cols="+mtxCols+",searchTreeSize="+searchTree.size());
+//				System.out.println("Ship: ("+vShip.getMtxColumn()+","+vShip.getMtxRow()+"), Target: ("+vTarget.getMtxColumn()+","+vTarget.getMtxRow()+")");
+//				thisPath.print();
+//				System.out.println("Lowest cost so far: "+lowestCostSoFar);
+//				System.out.println("*****************************");
+				if(debugDepthCount > 200000) {
+					return null;
+				}
+			}
 			// Debug: add path to search tree
 			if(debug) {
 				searchTree.add(thisPath);
 			}
-			if(thisPath.getCurrentVertex().isEnd()) {
+			if(thisPath.getCurrentVertex().isEnd() || thisPath.getCurrentVertex().getHValue() == 0) {
+				if(debug) {
+					System.out.println("<AStarGraph.getPathTo> - FOUND OPTIMAL PATH");
+					thisPath.print();
+				}
 				bestSoFar = thisPath;
+				found = true;
 				break;
 			}
 			// For each child, create a new path that moves to it, add to queue
 			for(Vertex child: thisPath.getCurrentVertex().getEdges()) {
-				AStarPath childPath = AStarPath.duplicatePath(this, thisPath);
-				childPath.addVertex(child);
-				q.add(childPath);
+				if(!thisPath.contains(child)) {
+					try {
+						AStarPath childPath = AStarPath.duplicatePath(this, thisPath);
+						childPath.addVertex(child);
+	//					System.out.println("Adding path of cost: "+childPath.getQueueValue());
+						q.add(childPath);
+					}catch(DuplicatePathException e) {
+	//					System.out.println("Duplicate path found!");
+					}
+				}
 			}
 		}
 		q.clear();
@@ -168,6 +208,7 @@ public class AStarGraph {
 		}
 		
 		// Set heuristic values for all vertices
+		int blockedCount = 0;
 		for(int row = 0; row < mtxRows; row++) {
 			for(int col = 0; col < mtxCols; col++) {
 				// Get vertex at this position
@@ -186,12 +227,16 @@ public class AStarGraph {
 				}
 				// If obstruction exists, set H value to max integer value
 				else {
+					blockedCount++;
 					heuristicValue = Double.MAX_VALUE;
 				}
 				v.setHValue(heuristicValue);
 			}
 		}
 		obstructions.clear();
+		if(debug){
+			System.out.println("<AStarGraph.setHeuristics> - Blocked "+blockedCount+" grids due to obstructions");
+		}
 	}
 	
 	/**
@@ -230,9 +275,18 @@ public class AStarGraph {
 	 * @return Vertex containing the position
 	 */
 	Vertex getVertex(Position p) {
-		int row = (int) (p.getY() / mtxRows);
-		int col = (int) (p.getX() / mtxCols);
-		return vMtx[row][col];
+		int row = Math.min((int)p.getY() / GRID_SIZE, mtxRows - 1);
+		int col = Math.min((int)p.getX() / GRID_SIZE, mtxCols - 1);
+		try {
+			return vMtx[row][col];
+		}
+		catch(ArrayIndexOutOfBoundsException e) {
+			System.out.println("Failed to get vertex for position: "+p);
+			System.out.println("Row:"+row+",Col:"+col);
+			System.out.println("Matrix: ["+mtxRows+"]["+mtxCols+"] @ "+GRID_SIZE);
+//			System.exit(-1);
+			return null;
+		}
 	}
 
 	/**

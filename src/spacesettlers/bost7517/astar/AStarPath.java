@@ -40,11 +40,15 @@ public class AStarPath implements Comparable<AStarPath>{
 	 * Adds a vertex to this path and updates cost
 	 * 
 	 * @param v Vertex to add to path
+	 * @throws DuplicatePathException 
 	 */
-	void addVertex(Vertex v) {
+	void addVertex(Vertex v) throws DuplicatePathException {
 		if(!vertices.contains(v)) {
 			vertices.add(v);
 			totalCost += AStarGraph.GRID_SIZE;
+		}
+		else {
+			throw new DuplicatePathException();
 		}
 	}
 	
@@ -63,6 +67,10 @@ public class AStarPath implements Comparable<AStarPath>{
 	Vertex getCurrentVertex() {
 		return vertices.getLast();
 	}
+	
+	int getQueueValue() {
+		return (int) (totalCost + vertices.getLast().getHValue());
+	}
 
 	@Override
 	public int compareTo(AStarPath otherPath) {
@@ -76,8 +84,9 @@ public class AStarPath implements Comparable<AStarPath>{
 	 * @param g graph object being used
 	 * @param v initial vertex
 	 * @return Path object with v as initial vertex
+	 * @throws DuplicatePathException 
 	 */
-	static AStarPath makePath(AStarGraph g, Vertex v) {
+	static AStarPath makePath(AStarGraph g, Vertex v) throws DuplicatePathException {
 		AStarPath ret = new AStarPath(g);
 		ret.addVertex(v);
 		return ret;
@@ -88,12 +97,27 @@ public class AStarPath implements Comparable<AStarPath>{
 	 * @param g graph object being used
 	 * @param p path to duplicate
 	 * @return duplicate of parameter path
+	 * @throws DuplicatePathException 
 	 */
-	static AStarPath duplicatePath(AStarGraph g, AStarPath p) {
+	static AStarPath duplicatePath(AStarGraph g, AStarPath p) throws DuplicatePathException {
 		AStarPath ret = new AStarPath(g);
 		for(Vertex v: p.vertices) {
 			ret.addVertex(v);
 		}
 		return ret;
+	}
+
+	public void print() {
+		boolean first = true;
+		for(Vertex v: vertices) {
+			if(first) first = false;
+			else System.out.print(" -> ");
+			System.out.print("("+v.getMtxColumn()+","+v.getMtxRow()+")");
+		}
+		System.out.println();
+	}
+
+	public boolean contains(Vertex child) {
+		return vertices.contains(child);
 	}
 }

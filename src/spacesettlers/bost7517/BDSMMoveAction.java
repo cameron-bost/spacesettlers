@@ -272,8 +272,8 @@ public class BDSMMoveAction extends AbstractAction {
 		double velocityErrorY = (goalVelocity.getYValue() - currentLoc.getTranslationalVelocityY());
 		//System.out.println("Velocity error is " + velocityErrorX + " ," + velocityErrorY);
 
-		double xAccel = pdControlTranslate(xError*2.1, velocityErrorX);
-		double yAccel = pdControlTranslate(yError*2.1, velocityErrorY);
+		double xAccel = pdControlTranslate(xError*2.7, velocityErrorX);
+		double yAccel = pdControlTranslate(yError*2.7, velocityErrorY);
 		
 		//System.out.println("Translation accel is " + xAccel + ", " + yAccel);
 		//System.out.println("Orienting to goal with " + xAccel + ", " + yAccel);
@@ -329,7 +329,7 @@ public class BDSMMoveAction extends AbstractAction {
 		movement.setTranslationalAcceleration(goalAccel);
 
 		// figure out if it has reached the goal
-		if ((goalAccel.getMagnitude() < TARGET_REACHED_ACCEL) ||
+		if ((goalAccel.getMagnitude() > TARGET_REACHED_ACCEL) ||
 				(space.findShortestDistance(targetLocation, drone.getPosition()) < TARGET_REACHED_ERROR)) {
 			isFinished = true;
 		}

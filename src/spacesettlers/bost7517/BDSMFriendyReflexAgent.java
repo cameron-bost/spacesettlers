@@ -9,6 +9,7 @@ import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
@@ -50,7 +51,7 @@ import spacesettlers.utilities.Vector2D;
  */
 public class BDSMFriendyReflexAgent extends TeamClient {
 	private boolean debug = false;
-	private boolean showMyGraphics = true;
+	private boolean showMyGraphics = false;
 	HashMap <UUID, Ship> asteroidToShipMap;
 	HashMap <UUID, Boolean> aimingForBase;
 	HashMap <UUID, Boolean> justHitBase;
@@ -64,9 +65,9 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 	/**
 	 * Final Variables
 	 */
-	final double LOW_ENERGY_THRESHOLD = 1500; // #P1 - Lowered 2000 -> 1500
+	final double LOW_ENERGY_THRESHOLD = 2000; // #P1 - Lowered 2000 -> 1500
 	final double RESOURCE_THRESHOLD = 2500;   // #P1 - Raised 500 -> 2000
-	final double BASE_BUYING_DISTANCE = 350; // #P1 - raised 200 -> 350 
+	final double BASE_BUYING_DISTANCE = 375; // #P1 - raised 200 -> 350 
 	
 	
 	/**
@@ -122,14 +123,14 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 		
 		if(showMyGraphics)
 		{
-			System.out.println("<<INIT GRID MAPPING>> -- " + space.getHeight());
+			
 			graphicsToAdd = new ArrayList<SpacewarGraphics>();
 			
 			//create columns
 			Position heightBottom = new Position(0,0);
 			Position heightTop = new Position(0,space.getHeight());
 				
-		    for (int i = 30; i <= space.getWidth()+100; i = i + 30)
+		    for (int i = 30; i <= space.getWidth(); i = i + 30)
 		    {
 		    	Vector2D te = new Vector2D(0,space.getHeight());
 		    	LineGraphics t= new LineGraphics(heightBottom,heightTop,te);
@@ -151,6 +152,21 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 				t.setLineColor(Color.white);
 				graphicsToAdd.add(t);
 		    }
+		    // Draw vertex
+		    
+		    List<Position> vertex = new ArrayList<Position>();
+		    
+		    for (int i = 0; i < space.getWidth()-30; i = i + 30)
+		    {
+		    	for(int a = 0; a < space.getHeight(); a = a + 30)
+		    	{
+		    		Position middle = new Position(i+15,a+15);
+		    		vertex.add(middle);
+					graphicsToAdd.add(new CircleGraphics(1,Color.white,middle));
+		    	}
+		    }
+		    for(int i = 0 ; vertex.size() > i; i++)
+		    	System.out.println(" I " + vertex.get(i));
 		    
 		    
 		}
@@ -199,14 +215,16 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 			
 			// Get best asteroid
 			Asteroid asteroid = pickHighestValueNearestFreeAsteroid(space, ship);
-			
+			if(showMyGraphics)
+			{
 				//CREATE A LINE From the ship to the current target asteroid.
 				graphicsToAdd.add(new StarGraphics(3, this.getTeamColor(), asteroid.getPosition()));
 				LineGraphics line = new LineGraphics(ship.getPosition(), asteroid.getPosition(), 
-						space.findShortestDistanceVector(ship.getPosition(), asteroid.getPosition()));
+				space.findShortestDistanceVector(ship.getPosition(), asteroid.getPosition()));
 				
 				line.setLineColor(this.getTeamColor());
 				graphicsToAdd.add(line);
+			}
 				//Create N number of objects;
 				/*
 				for(int i = 0; i < 20 ;i++)

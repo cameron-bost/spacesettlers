@@ -1,5 +1,6 @@
 package spacesettlers.bost7517.astar;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.PriorityQueue;
@@ -110,23 +111,18 @@ public class AStarGraph {
 			System.out.println("<AStarGraph.getPathTo> - Finished setting heuristics...");
 		}
 		// Init priority queue
-		PriorityQueue<AStarPath> q = new PriorityQueue<>();
-		try {
-			// Add start vertex to queue
-			q.add(AStarPath.makePath(this, vShip));
-		}catch(DuplicatePathException e) {
-			if(debug){
-				System.out.println("<AStarGraph.getPathTo> - Duplicate path found.");
-			}
-		}
+		PriorityQueue<AStarPath> fringeQ = new PriorityQueue<>();
+		HashMap<Vertex, Boolean> closed = new HashMap<>();
+		// Add start vertex to queue
+		fringeQ.add(AStarPath.makePath(this, vShip));
 		// While queue is not empty and found is false
 		boolean found = false;
 		AStarPath bestSoFar = null;
 		int debugDepthCount = 0;
 		int lowestCostSoFar = Integer.MAX_VALUE;
-		while(!found && !q.isEmpty()) {
+		while(!found && !fringeQ.isEmpty()) {
 			// Get next value from queue
-			AStarPath thisPath = q.poll();
+			AStarPath thisPath = fringeQ.poll();
 			if(debug){
 				lowestCostSoFar = Math.min(thisPath.getQueueValue(), lowestCostSoFar);
 			}
@@ -148,30 +144,33 @@ public class AStarGraph {
 			if(debug) {
 				searchTree.add(thisPath);
 			}
-			if(thisPath.getCurrentVertex().isEnd() || thisPath.getCurrentVertex().getHValue() == 0) {
-				if(debug) {
-					System.out.println("<AStarGraph.getPathTo> - FOUND OPTIMAL PATH");
-					thisPath.print();
+			
+			// If vertex is not already closed
+			if(!closed.containsKey(thisPath.getCurrentVertex())) {
+				closed.put(thisPath.getCurrentVertex(), true);
+				// Check for goal
+				if(thisPath.getCurrentVertex().isEnd() || thisPath.getCurrentVertex().getHValue() == 0) {
+					if(debug) {
+						System.out.println("<AStarGraph.getPathTo> - FOUND OPTIMAL PATH");
+						thisPath.print();
+					}
+					bestSoFar = thisPath;
+					found = true;
+					break;
 				}
-				bestSoFar = thisPath;
-				found = true;
-				break;
-			}
-			// For each child, create a new path that moves to it, add to queue
-			for(Vertex child: thisPath.getCurrentVertex().getEdges()) {
-				if(!thisPath.contains(child)) {
-					try {
-						AStarPath childPath = AStarPath.duplicatePath(this, thisPath);
-						childPath.addVertex(child);
-	//					System.out.println("Adding path of cost: "+childPath.getQueueValue());
-						q.add(childPath);
-					}catch(DuplicatePathException e) {
-	//					System.out.println("Duplicate path found!");
+				// For each child, create a new path that moves to it, add to queue
+				for(Vertex child: thisPath.getCurrentVertex().getEdges()) {
+					// Only add child if it is not already closed
+					if(!closed.containsKey(child)) {
+							AStarPath childPath = AStarPath.duplicatePath(this, thisPath);
+							childPath.addVertex(child);
+							fringeQ.add(childPath);
 					}
 				}
 			}
 		}
-		q.clear();
+		fringeQ.clear();
+		closed.clear();
 		// Cleanup
 		vTarget.markNotEnd();
 		vShip.markNotStart();

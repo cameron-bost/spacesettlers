@@ -40,16 +40,10 @@ public class AStarPath implements Comparable<AStarPath>{
 	 * Adds a vertex to this path and updates cost
 	 * 
 	 * @param v Vertex to add to path
-	 * @throws DuplicatePathException 
 	 */
-	void addVertex(Vertex v) throws DuplicatePathException {
-		if(!vertices.contains(v)) {
-			vertices.add(v);
-			totalCost += AStarGraph.GRID_SIZE;
-		}
-		else {
-			throw new DuplicatePathException();
-		}
+	void addVertex(Vertex v){
+		vertices.add(v);
+		totalCost += AStarGraph.GRID_SIZE;
 	}
 	
 	/**
@@ -84,9 +78,8 @@ public class AStarPath implements Comparable<AStarPath>{
 	 * @param g graph object being used
 	 * @param v initial vertex
 	 * @return Path object with v as initial vertex
-	 * @throws DuplicatePathException 
 	 */
-	static AStarPath makePath(AStarGraph g, Vertex v) throws DuplicatePathException {
+	static AStarPath makePath(AStarGraph g, Vertex v) {
 		AStarPath ret = new AStarPath(g);
 		ret.addVertex(v);
 		return ret;
@@ -97,9 +90,8 @@ public class AStarPath implements Comparable<AStarPath>{
 	 * @param g graph object being used
 	 * @param p path to duplicate
 	 * @return duplicate of parameter path
-	 * @throws DuplicatePathException 
 	 */
-	static AStarPath duplicatePath(AStarGraph g, AStarPath p) throws DuplicatePathException {
+	static AStarPath duplicatePath(AStarGraph g, AStarPath p) {
 		AStarPath ret = new AStarPath(g);
 		for(Vertex v: p.vertices) {
 			ret.addVertex(v);

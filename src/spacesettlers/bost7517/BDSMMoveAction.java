@@ -295,16 +295,18 @@ public class BDSMMoveAction extends AbstractAction {
 
 		// set the angular and translational velocity at the same time
 		double angularAccel = pdControlOrientToGoal(space, targetLocation, ship.getPosition(), 0);
-		movement.setAngularAccleration(angularAccel);
+		movement.setAngularAccleration(angularAccel*2);
+		//System.out.println("AngularAccel is " + angularAccel);
+		//System.out.println("TargetVelocity is " + targetVelocity);
 		Vector2D goalAccel = pdControlMoveToGoal(space, targetLocation, ship.getPosition(), targetVelocity);
 		movement.setTranslationalAcceleration(goalAccel);
 
 		// figure out if it has reached the goal
 		if ((goalAccel.getMagnitude() < TARGET_REACHED_ACCEL) ||
-				(space.findShortestDistance(targetLocation, ship.getPosition()) < TARGET_REACHED_ERROR)) {
+			(space.findShortestDistance(targetLocation, ship.getPosition()) < TARGET_REACHED_ERROR)) {
 			isFinished = true;
 		}
-
+		
 		return movement;
 	}
 	

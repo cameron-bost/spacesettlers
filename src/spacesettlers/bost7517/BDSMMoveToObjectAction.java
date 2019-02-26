@@ -15,7 +15,8 @@ import spacesettlers.utilities.Vector2D;
 public class BDSMMoveToObjectAction extends BDSMMoveAction {
 	protected AbstractObject goalObject;
 	protected Position originalGoalLocation;
-	
+	protected Position aStarPosition;
+	protected Position currentPosition;
 	/**
 	 * Initialize with your location and the goal object 
 	 * 
@@ -42,7 +43,39 @@ public class BDSMMoveToObjectAction extends BDSMMoveAction {
 		this.goalObject = goalObject;
 		this.originalGoalLocation = goalObject.getPosition().deepCopy();
 	}
-
+	
+	/**
+	 * This is a test for adding a extra parameter
+	 * @param space
+	 * @param currentLocation
+	 * @param newPosition
+	 * @param goalObject
+	 * @param goalVelocity
+	 */
+	public BDSMMoveToObjectAction(Toroidal2DPhysics space, Position currentLocation, Position aStarPosition, AbstractObject goalObject) {
+		super(space, currentLocation, aStarPosition);
+		this.currentPosition = currentLocation;
+		this.goalObject = goalObject;
+		this.aStarPosition = aStarPosition;
+		this.originalGoalLocation = goalObject.getPosition().deepCopy();
+	}
+	
+	/**
+	 * This is a test for adding a extra parameter
+	 * @param space
+	 * @param currentLocation
+	 * @param newPosition
+	 * @param goalObject
+	 * @param goalVelocity
+	 */
+	public BDSMMoveToObjectAction(Toroidal2DPhysics space, Position currentLocation, Position aStarPosition, AbstractObject goalObject, 
+			Vector2D goalVelocity) {
+		super(space, currentLocation, aStarPosition, goalVelocity);
+		this.goalObject = goalObject;
+		this.aStarPosition = aStarPosition;
+		this.originalGoalLocation = goalObject.getPosition().deepCopy();
+	}
+	
 	/**
 	 * Return the goal object (and remember it is a clone so use its UUID!)
 	 * @return
@@ -84,6 +117,13 @@ public class BDSMMoveToObjectAction extends BDSMMoveAction {
 			return true;
 		}
 		
+		if((aStarPosition != null && currentPosition != null))
+		{
+			if(currentPosition == aStarPosition)
+			{
+				return true;
+			}
+		}
 		return false;
 	}
 	

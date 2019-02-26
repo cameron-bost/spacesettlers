@@ -60,6 +60,8 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 	HashMap <UUID, Boolean> aimingForBase;
 	HashMap <UUID, Boolean> justHitBase;
 	private ArrayList<SpacewarGraphics> graphicsToAdd;
+	LinkedList<Position> listOfPositions;
+	AStarGraph StarGraph = null;
 	/**
 	 * Example knowledge used to show how to load in/save out to files for learning
 	 */
@@ -70,7 +72,7 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 	 * Final Variables
 	 */
 	final double LOW_ENERGY_THRESHOLD = 2000; // #P1 - Lowered 2000 -> 1500
-	final double RESOURCE_THRESHOLD = 2500;   // #P1 - Raised 500 -> 2000
+	final double RESOURCE_THRESHOLD = 3000;   // #P1 - Raised 500 -> 2000
 	final double BASE_BUYING_DISTANCE = 375; // #P1 - raised 200 -> 350 
 	
 	
@@ -170,9 +172,20 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 		    	}
 		    }
 		    for(int i = 0 ; vertex.size() > i; i++)
-		    	System.out.println(" I " + vertex.get(i));
-		    
-		    
+		    	System.out.println(" I " + vertex.get(i));    
+		}
+		//End of Graphics
+		 
+		 
+
+		//Create a Star graph
+		StarGraph = new AStarGraph(space.getHeight(),space.getWidth(),true);
+		boolean replan = false;
+		
+		//Allows for replan every 100 steps.
+		if(space.getCurrentTimestep() % 100 == 0)
+		{
+			replan = true;
 		}
 		
 		// Rule 1. If energy is low, go for nearest energy source
@@ -181,6 +194,7 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 			// Find energy source
 			AbstractObject energyTarget = AgentUtils.findNearestEnergySource(space, ship);
 			if(energyTarget != null) {
+				/*
 				newAction = new BDSMMoveToObjectAction(space, currentPosition, energyTarget);
 				if(energyTarget instanceof Base) {
 					aimingForBase.put(ship.getId(), true);
@@ -188,6 +202,37 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 				else {
 					aimingForBase.put(ship.getId(), false);
 				}
+				*/
+				if(listOfPositions == null)//makes sure that the list isn't null
+				{
+					listOfPositions = new LinkedList<Position>(); //creates an empty linked list
+				}
+				if(listOfPositions.isEmpty() )//makes sure that the first item is not null
+				{
+					listOfPositions = new LinkedList<Position>(); //creates a empty list if was not previously created
+					AStarPath aStarPath = StarGraph.getPathTo(ship, energyTarget, space); // this creates the astar path for the astar graph
+					listOfPositions = aStarPath.getPositions(); // list will hold the list of positions of the aStar Path
+				}
+
+				while(!listOfPositions.isEmpty() && ship.getCurrentAction() == null) // checks to make sure that the list is not empty
+				{
+					if(listOfPositions.getFirst() != null ) //checks to make sure that the first item itself is not null
+					{
+						newAction = new BDSMMoveToObjectAction(space, currentPosition, listOfPositions.poll(), energyTarget); // creates a new action
+						aimingForBase.put(ship.getId(), true);
+						return newAction;
+					}
+				}
+				
+				//deal with if a star does not get properly set
+				newAction = new BDSMMoveToObjectAction(space, currentPosition, energyTarget);
+				if(energyTarget instanceof Base) {
+					aimingForBase.put(ship.getId(), true);
+				}
+				else {
+					aimingForBase.put(ship.getId(), false);
+				}
+				
 			}
 			else {
 				if(debug) {
@@ -201,8 +246,33 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 		// Rule 2. If the ship has enough resources, deposit them
 		if (ship.getResources().getTotal() > RESOURCE_THRESHOLD) {
 			Base base = AgentUtils.findNearestBase(space, ship);
-			AbstractAction newAction = new BDSMMoveToObjectAction(space, currentPosition, base);
+			AbstractAction newAction = null;
+			
+			if(listOfPositions == null)//makes sure that the list isn't null
+			{
+				listOfPositions = new LinkedList<Position>(); //creates an empty linked list
+			}
+			if(listOfPositions.isEmpty() )//makes sure that the first item is not null
+			{
+				listOfPositions = new LinkedList<Position>(); //creates a empty list if was not previously created
+				AStarPath aStarPath = StarGraph.getPathTo(ship, base, space); // this creates the astar path for the astar graph
+				listOfPositions = aStarPath.getPositions(); // list will hold the list of positions of the aStar Path
+			}
+
+			while(!listOfPositions.isEmpty() && ship.getCurrentAction() == null) // checks to make sure that the list is not empty
+			{
+				if(listOfPositions.getFirst() != null ) //checks to make sure that the first item itself is not null
+				{
+					newAction = new BDSMMoveToObjectAction(space, currentPosition, listOfPositions.poll(), base); // creates a new action
+					aimingForBase.put(ship.getId(), true);
+					return newAction;
+				}
+			}
+			
+			// if astars is not being implemented will have to run another localsearch.
+			newAction = new BDSMMoveToObjectAction(space, currentPosition, base);
 			aimingForBase.put(ship.getId(), true);
+			
 			if(debug){
 				System.out.println("<Action Declaration> - Deposit (" + ship.getResources().getTotal()+")");
 			}
@@ -212,55 +282,77 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 
 		// Rule 3. If not doing anything, just finished, or just hit base, then aim for best asteroid
 		if (current == null || current.isMovementFinished(space) || 
-				(justHitBase.containsKey(ship.getId()) && justHitBase.get(ship.getId()))) {
+				(justHitBase.containsKey(ship.getId()) && justHitBase.get(ship.getId()))) 
+		{
 			// Update model
 			justHitBase.put(ship.getId(), false);			
 			aimingForBase.put(ship.getId(), false);
 			
 			// Get best asteroid
 			Asteroid asteroid = pickHighestValueNearestFreeAsteroid(space, ship);
+			
 			if(showMyGraphics)
 			{
 				//CREATE A LINE From the ship to the current target asteroid.
-				graphicsToAdd.add(new StarGraphics(3, this.getTeamColor(), asteroid.getPosition()));
-				LineGraphics line = new LineGraphics(ship.getPosition(), asteroid.getPosition(), 
-				space.findShortestDistanceVector(ship.getPosition(), asteroid.getPosition()));
-				
+				graphicsToAdd.add(new StarGraphics(3, this.getTeamColor(), listOfPositions.getFirst()));
+				LineGraphics line = new LineGraphics(ship.getPosition(), listOfPositions.getFirst(), 
+				space.findShortestDistanceVector(ship.getPosition(), listOfPositions.getFirst()));
 				line.setLineColor(this.getTeamColor());
 				graphicsToAdd.add(line);
 			}
+			
+			//Re Runs AStarPath to get updated path towards an asteroid.
+			if((space.getCurrentTimestep() % 100 == 0 || replan == true) && asteroid != null) // allows us to replan astar on every 50th time step
+			{
+				listOfPositions = new LinkedList<Position>(); 
+				AStarPath aStarPath = StarGraph.getPathTo(ship, asteroid, space); // this creates the astar path for the astar graph
+				listOfPositions = aStarPath.getPositions(); // list will hold the list of positions of the aStar Path
+			}
+				
 			AbstractAction newAction = null;
 			
 			if (asteroid != null) {
 				asteroidToShipMap.put(asteroid.getId(), ship);
-				
-				
-				AStarGraph StarGraph = new AStarGraph(space.getHeight(),space.getWidth(),true);
-				AStarPath aPath = new AStarPath(StarGraph);
-				System.out.println("<Right above for loop> " + StarGraph.getSearchTree().size());
-				
-				
-				//newAction = new BDSMMoveToObjectAction(space, currentPosition, asteroid, 
-				//		asteroid.getPosition().getTranslationalVelocity());			
-				
-				
 				
 				if(debug)
 				{
 					System.out.println("<Action Declaration> - Chasing asteroid");
 					System.out.println("<Velocity Check> - "+ship.getPosition().getTranslationalVelocity());
 				}
-	
 				
-				stepCount++;
-				
+				if(listOfPositions == null ) // checks to make sure the linked list is not null
+				{
+					listOfPositions = new LinkedList<Position>();  //creates a empty linked list of positions.
+				}
+				if(!listOfPositions.isEmpty()) // checks to make sure that the list is not empty
+				{
+					if(listOfPositions.getFirst() != null ) //checks to make sure that the first item itself is not null
+					{
+						//Will create a new action in which the action is the first item(vertex) in the linked list.
+						newAction = new BDSMMoveToObjectAction(space, currentPosition, listOfPositions.poll() ,asteroid,asteroid.getPosition().getTranslationalVelocity()); // creates a new action
+						
+						//System.out.println("<LIST OF POSITIONS AFTER - " + listOfPositions.getFirst());
+						//Vector2D t = new Vector2D(listOfPositions.getFirst().getX(),listOfPositions.getFirst().getY());
+						//newAction = new BDSMMoveAction(space,currentPosition,listOfPositions.poll(),t);
+						
+						return newAction;
+					}
+				} 
+
+				// if astars is not being implemented will have to run another localsearch.
+				newAction = new BDSMMoveToObjectAction(space, currentPosition,asteroid, asteroid.getPosition().getTranslationalVelocity());
+
+						
 				return newAction;
 			}
 		}
+		
+		
 		if(debug) {
 			System.out.println("<Action Declaration> - Continuing action...");
 		}
 		stepCount++;
+		
 		return ship.getCurrentAction();
 	}
 	
@@ -368,6 +460,7 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 		asteroidToShipMap = new HashMap<UUID, Ship>();
 		aimingForBase = new HashMap<UUID, Boolean>();
 		justHitBase = new HashMap<UUID, Boolean>();
+		listOfPositions = null;
 		if(showMyGraphics)
 		{
 			System.out.println("<<INIT GRID MAPPING>>");

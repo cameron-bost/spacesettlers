@@ -126,8 +126,10 @@ public class BDSMMoveAction extends AbstractAction {
 		super();
 		KvRotational = 2.53;
 		KpRotational = 1.6;
-		KvTranslational = 0.56f;
-		KpTranslational = 0.08f;
+		//KvTranslational = 0.56f; // DEFAULT
+		//KpTranslational = 0.08f; // DEFAULT
+		KvTranslational = 0.89f;
+		KpTranslational = 0.20f;
 	}
 
 	/**
@@ -268,8 +270,8 @@ public class BDSMMoveAction extends AbstractAction {
 		
 		//System.out.println("Goal velocity is " + goalVelocity);
 		//System.out.println("Current velocity is " + currentLoc.getTranslationalVelocity());
-		double velocityErrorX = (goalVelocity.getXValue() - currentLoc.getTranslationalVelocityX());
-		double velocityErrorY = (goalVelocity.getYValue() - currentLoc.getTranslationalVelocityY());
+		double velocityErrorX = (goalVelocity.getXValue() - currentLoc.getTranslationalVelocityX()/2);
+		double velocityErrorY = (goalVelocity.getYValue() - currentLoc.getTranslationalVelocityY())/2;
 		//System.out.println("Velocity error is " + velocityErrorX + " ," + velocityErrorY);
 
 		double xAccel = pdControlTranslate(xError*2.7, velocityErrorX);
@@ -295,18 +297,19 @@ public class BDSMMoveAction extends AbstractAction {
 
 		// set the angular and translational velocity at the same time
 		double angularAccel = pdControlOrientToGoal(space, targetLocation, ship.getPosition(), 0);
-		movement.setAngularAccleration(angularAccel*2);
-		//System.out.println("AngularAccel is " + angularAccel);
-		//System.out.println("TargetVelocity is " + targetVelocity);
+		movement.setAngularAccleration(angularAccel);
+		
+		
 		Vector2D goalAccel = pdControlMoveToGoal(space, targetLocation, ship.getPosition(), targetVelocity);
 		movement.setTranslationalAcceleration(goalAccel);
 
+		
 		// figure out if it has reached the goal
 		if ((goalAccel.getMagnitude() < TARGET_REACHED_ACCEL) ||
 			(space.findShortestDistance(targetLocation, ship.getPosition()) < TARGET_REACHED_ERROR)) {
 			isFinished = true;
 		}
-		
+
 		return movement;
 	}
 	

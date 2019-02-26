@@ -101,29 +101,29 @@ public class BDSMMoveToObjectAction extends BDSMMoveAction {
 		
 		// goal object disappeared
 		if (newGoalObj == null) {
-			//System.out.println("Goal object disappeared");
+			System.out.println("Goal object disappeared");
 			return true;
 		}
 		
 		// goal object died
 		if (!newGoalObj.isAlive()) {
-			//System.out.println("Goal object dead");
+			System.out.println("Goal object dead");
 			return true;
 		} 
 
 		// goal object moved
 		if (!newGoalObj.getPosition().equalsLocationOnly(originalGoalLocation)) {
-			//System.out.println("Goal object moved");
+			System.out.println("Goal object moved");
 			return true;
 		}
 		
-		if((aStarPosition != null && currentPosition != null))
-		{
+		//if((aStarPosition != null && currentPosition != null))
+		//{
 			if(currentPosition == aStarPosition)
 			{
 				return true;
 			}
-		}
+		//}
 		return false;
 	}
 	

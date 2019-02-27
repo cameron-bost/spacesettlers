@@ -320,14 +320,14 @@ public class BDSMMoveAction extends AbstractAction {
 		// take care of wrap-around
 		Vector2D shortestDist = space.findShortestDistanceVector(currentLoc, goalLoc);
 		
-		double xError = shortestDist.getXValue()*3.2;
-		double yError = shortestDist.getYValue()*3.2;
+		double xError = shortestDist.getXValue()*4.8;
+		double yError = shortestDist.getYValue()*4.8;
 		//System.out.println("xerror is " + xError + " yError is " + yError);
 		
 		//System.out.println("Goal velocity is " + goalVelocity);
 		//System.out.println("Current velocity is " + currentLoc.getTranslationalVelocity());
-		double velocityErrorX = (goalVelocity.getXValue() - currentLoc.getTranslationalVelocityX()*.5);
-		double velocityErrorY = (goalVelocity.getYValue() - currentLoc.getTranslationalVelocityY()*.5);
+		double velocityErrorX = (goalVelocity.getXValue() - currentLoc.getTranslationalVelocityX());
+		double velocityErrorY = (goalVelocity.getYValue() - currentLoc.getTranslationalVelocityY());
 		//System.out.println("Velocity error is " + velocityErrorX + " ," + velocityErrorY);
 
 		double xAccel = pdControlTranslate(xError, velocityErrorX);

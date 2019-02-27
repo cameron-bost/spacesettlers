@@ -1,15 +1,10 @@
-package spacesettlers.bost7517.astar;
+package spacesettlers.bost7517;
 
 import java.util.LinkedList;
 
 import spacesettlers.utilities.Position;
-/**
- * Represents a path traveled by the AStar algorithm. Returned by AStarGraph.getPathTo()
- * 
- * @author Cameron Bost
- * @version 0.2
- */
-public class AStarPath implements Comparable<AStarPath>{
+
+public class GBFSPath implements Comparable<GBFSPath>{
 	/**List of vertices traveled to*/
 	private LinkedList<Vertex> vertices = new LinkedList<>();
 	
@@ -22,7 +17,7 @@ public class AStarPath implements Comparable<AStarPath>{
 	/**
 	 * No constructor arguments
 	 */
-	private AStarPath(AStarGraph _graph) {
+	private GBFSPath(AStarGraph _graph) {
 		totalCost = 0;
 		vertices = new LinkedList<>();
 		graph = _graph;
@@ -63,13 +58,13 @@ public class AStarPath implements Comparable<AStarPath>{
 	}
 	
 	int getQueueValue() {
-		return (int) (totalCost + vertices.getLast().getHValue());
+		return (int) vertices.getLast().getHValue();
 	}
 
 	@Override
-	public int compareTo(AStarPath otherPath) {
-		double value = totalCost + vertices.getLast().getHValue();
-		double otherValue = otherPath.totalCost + otherPath.vertices.getLast().getHValue();
+	public int compareTo(GBFSPath otherPath) {
+		double value = vertices.getLast().getHValue();
+		double otherValue = otherPath.vertices.getLast().getHValue();
 		return Double.compare(value, otherValue);
 	}
 	
@@ -79,8 +74,8 @@ public class AStarPath implements Comparable<AStarPath>{
 	 * @param v initial vertex
 	 * @return Path object with v as initial vertex
 	 */
-	static AStarPath makePath(AStarGraph g, Vertex v) {
-		AStarPath ret = new AStarPath(g);
+	static GBFSPath makePath(AStarGraph g, Vertex v) {
+		GBFSPath ret = new GBFSPath(g);
 		ret.addVertex(v);
 		return ret;
 	}
@@ -91,8 +86,8 @@ public class AStarPath implements Comparable<AStarPath>{
 	 * @param p path to duplicate
 	 * @return duplicate of parameter path
 	 */
-	static AStarPath duplicatePath(AStarGraph g, AStarPath p) {
-		AStarPath ret = new AStarPath(g);
+	static GBFSPath duplicatePath(AStarGraph g, GBFSPath p) {
+		GBFSPath ret = new GBFSPath(g);
 		for(Vertex v: p.vertices) {
 			ret.addVertex(v);
 		}

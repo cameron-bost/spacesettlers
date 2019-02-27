@@ -36,6 +36,7 @@ public class AStarGraph {
 	
 	/**Search tree from most recent plan*/
 	private LinkedList<AStarPath> searchTree;
+	private LinkedList<GBFSPath> searchTreeGBFS;
 	
 	/**
 	 * Constructor for graph. Window parameters and asteroid radius are required.
@@ -49,6 +50,7 @@ public class AStarGraph {
 		mtxRows = windowHeight / GRID_SIZE;
 		debug = _debug;
 		searchTree = new LinkedList<>();
+		searchTreeGBFS = new LinkedList<>();
 		initMatrix();
 	}
 	
@@ -162,9 +164,9 @@ public class AStarGraph {
 				for(Vertex child: thisPath.getCurrentVertex().getEdges()) {
 					// Only add child if it is not already closed
 					if(!closed.containsKey(child)) {
-							AStarPath childPath = AStarPath.duplicatePath(this, thisPath);
-							childPath.addVertex(child);
-							fringeQ.add(childPath);
+						AStarPath childPath = AStarPath.duplicatePath(this, thisPath);
+						childPath.addVertex(child);
+						fringeQ.add(childPath);
 					}
 				}
 			}
@@ -177,6 +179,94 @@ public class AStarGraph {
 		return bestSoFar;
 	}
 	
+	public GBFSPath getPathToGBFS(Ship ship, AbstractObject target, Toroidal2DPhysics space) {
+		// Debug: clear previous search tree
+		if(debug) {
+			searchTreeGBFS.clear();
+		}
+		// Clear heuristic values
+		clearHeuristics();
+		// Get vertex containing ship, mark as start
+		Vertex vShip = getVertex(ship.getPosition());
+		vShip.markStart();
+		// Get vertex containing target, mark as target
+		Vertex vTarget = getVertex(target.getPosition());
+		vTarget.markEnd();
+		
+		// Set heuristic values
+		if(debug) {
+			System.out.println("<AStarGraph.getPathToGBFS> - Setting heuristics...");
+		}
+		setHeuristics(space, ship, target);
+		if(debug) {
+			System.out.println("<AStarGraph.getPathToGBFS> - Finished setting heuristics...");
+		}
+		// Init priority queue
+		PriorityQueue<GBFSPath> frontierQ = new PriorityQueue<>();
+		HashMap<Vertex, Boolean> explored = new HashMap<>();
+		// Add start vertex to queue
+		frontierQ.add(GBFSPath.makePath(this, vShip));
+		// While queue is not empty and found is false
+		boolean found = false;
+		GBFSPath bestSoFar = null;
+		int debugDepthCount = 0;
+		int lowestCostSoFar = Integer.MAX_VALUE;
+		while(!found && !frontierQ.isEmpty()) {
+			// Get next value from queue
+			GBFSPath thisPath = frontierQ.poll();
+			if(debug){
+				lowestCostSoFar = Math.min(thisPath.getQueueValue(), lowestCostSoFar);
+			}
+			if(debug && debugDepthCount++ % 1000 == 0) {
+//						debugDepthCount++;
+				// Debug print code
+//						System.out.println("*****************************");
+//						System.out.println("AStarGraph.getPathTo> - At option #"+debugDepthCount+", cost="+thisPath.getQueueValue());
+//						System.out.println("Matrix size: rows="+mtxRows+",cols="+mtxCols+",searchTreeSize="+searchTree.size());
+//						System.out.println("Ship: ("+vShip.getMtxColumn()+","+vShip.getMtxRow()+"), Target: ("+vTarget.getMtxColumn()+","+vTarget.getMtxRow()+")");
+//						thisPath.print();
+//						System.out.println("Lowest cost so far: "+lowestCostSoFar);
+//						System.out.println("*****************************");
+				if(debugDepthCount > 200000) {
+					return null;
+				}
+			}
+			// Debug: add path to search tree
+			if(debug) {
+				searchTreeGBFS.add(thisPath);
+			}
+			
+			// If vertex is not already closed
+			if(!explored.containsKey(thisPath.getCurrentVertex())) {
+				explored.put(thisPath.getCurrentVertex(), true);
+				// Check for goal
+				if(thisPath.getCurrentVertex().isEnd() || thisPath.getCurrentVertex().getHValue() == 0) {
+					if(debug) {
+						System.out.println("<AStarGraph.getPathTo> - FOUND OPTIMAL PATH");
+						thisPath.print();
+					}
+					bestSoFar = thisPath;
+					found = true;
+					break;
+				}
+				// For each child, create a new path that moves to it, add to queue
+				for(Vertex child: thisPath.getCurrentVertex().getEdges()) {
+					// Only add child if it is not already closed
+					if(!explored.containsKey(child)) {
+						GBFSPath childPath = GBFSPath.duplicatePath(this, thisPath);
+						childPath.addVertex(child);
+						frontierQ.add(childPath);
+					}
+				}
+			}
+		}
+		frontierQ.clear();
+		explored.clear();
+		// Cleanup
+		vTarget.markNotEnd();
+		vShip.markNotStart();
+		return bestSoFar;
+	}
 	/**
 	 * Resets all heuristic values to 0
 	 */
@@ -294,5 +384,9 @@ public class AStarGraph {
 	 */
 	public LinkedList<AStarPath> getSearchTree(){
 		return searchTree;
+	}
+	
+	public LinkedList<GBFSPath> getSearchTreeGBFS(){
+		return searchTreeGBFS;
 	}
 }

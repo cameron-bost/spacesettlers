@@ -21,7 +21,7 @@ import spacesettlers.actions.AbstractAction;
 import spacesettlers.actions.DoNothingAction;
 import spacesettlers.actions.PurchaseCosts;
 import spacesettlers.actions.PurchaseTypes;
-import spacesettlers.bost7517.astar.AStarPath;
+import spacesettlers.bost7517.AStarPath;
 import spacesettlers.clients.ExampleKnowledge;
 import spacesettlers.clients.TeamClient;
 import spacesettlers.graphics.LineGraphics;
@@ -55,7 +55,7 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 	private AStarPath currentPath = null;
 	private LinkedList<AStarPath> currentSearchTree;
 	
-	private spacesettlers.bost7517.astar.AStarGraph graph;
+	private spacesettlers.bost7517.AStarGraph graph;
 	/**
 	 * Example knowledge used to show how to load in/save out to files for learning
 	 */
@@ -67,11 +67,11 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 	/**
 	 * Final Variables
 	 */
-	final double LOW_ENERGY_THRESHOLD = 2500; // #P1 - Lowered 2000 -> 1500
-	final double RESOURCE_THRESHOLD = 2500;   // #P1 - Raised 500 -> 2000
-	final double BASE_BUYING_DISTANCE = 350; // #P1 - raised 200 -> 350 
+	final double LOW_ENERGY_THRESHOLD = 2750; // #P1 - Lowered 2000 -> 1500
+	final double RESOURCE_THRESHOLD = 2000;   // #P1 - Raised 500 -> 2000
+	final double BASE_BUYING_DISTANCE = 400; // #P1 - raised 200 -> 350 
 	
-	static final int GRID_SIZE = spacesettlers.bost7517.astar.AStarGraph.GRID_SIZE;
+	static final int GRID_SIZE = spacesettlers.bost7517.AStarGraph.GRID_SIZE;
 	
 	/**
 	 * State Variables
@@ -463,7 +463,7 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 	 */
 	@Override
 	public void initialize(Toroidal2DPhysics space) {
-		graph = new spacesettlers.bost7517.astar.AStarGraph(space.getHeight(), space.getWidth(), false);
+		graph = new spacesettlers.bost7517.AStarGraph(space.getHeight(), space.getWidth(), false);
 		asteroidToShipMap = new HashMap<UUID, Ship>();
 		aimingForBase = new HashMap<UUID, Boolean>();
 		justHitBase = new HashMap<UUID, Boolean>();

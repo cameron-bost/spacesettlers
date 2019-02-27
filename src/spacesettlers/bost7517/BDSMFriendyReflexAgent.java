@@ -46,7 +46,7 @@ import spacesettlers.utilities.Vector2D;
  */
 public class BDSMFriendyReflexAgent extends TeamClient {
 	private boolean debug = false;
-	private boolean showMyGraphics = true;
+	private boolean showMyGraphics = false;
 	HashMap <UUID, Ship> asteroidToShipMap;
 	HashMap <UUID, Boolean> aimingForBase;
 	HashMap <UUID, Boolean> justHitBase;
@@ -123,7 +123,7 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 		Position currentPosition = ship.getPosition();
 		// update previous action
 		previousAction = current;
-		
+		//This will display graphics if enabled.
 		if(showMyGraphics)
 		{
 //			System.out.println("<<INIT GRID MAPPING>> -- " + space.getHeight());
@@ -159,43 +159,43 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 		    drawSearchTree(space);
 		}
 		// Rule 1. If energy is low, go for nearest energy source
-		
-		if (ship.getEnergy() < LOW_ENERGY_THRESHOLD) {
+
+		if ((ship.getEnergy() < LOW_ENERGY_THRESHOLD)) {
 			AbstractAction newAction = null;
-			// Find energy source
 			AbstractObject energyTarget = AgentUtils.findNearestEnergySource(space, ship);
 			
-			//Replans every 20 timesteps.
+	
 			if(current != null)
 			{
 				
 				if(energyTarget != null) {
-					
+					//Re-plans every 20 timesteps.
 					if(timeSincePlan >= 10) {
-						current = null;
-						timeSincePlan = 0;
-						currentPath = graph.getPathTo(ship,  energyTarget, space);
-						currentSearchTree = graph.getSearchTree();
-						pointsToVisit = new LinkedList<Position>(currentPath.getPositions());
+						current = null; //resets current stepp to null so it is able to update step
+						timeSincePlan = 0; // resets times plan back to 0
+						currentPath = graph.getPathTo(ship,  energyTarget, space); //Wil get the current path that a* has chosen
+						currentSearchTree = graph.getSearchTree(); //Returns a search tree 
+						pointsToVisit = new LinkedList<Position>(currentPath.getPositions()); // Will contain all the points for a*
 					}
 					else
 					{
 						timeSincePlan++;
 					}
-					if(current != null)
+					if(current != null && (ship.getEnergy() > LOW_ENERGY_THRESHOLD)) // Want to make sure not to interrupt an a* move that has not finished yet.
 					{
-						if(!current.isMovementFinished(space))
+						if(!current.isMovementFinished(space)) //checks if the object has stopped moving
 						{
 							return current;
 						}
 					}
+					// Call points to create a new action to move to that object.
 					if (pointsToVisit != null)
 					{
 						if(!pointsToVisit.isEmpty())
 						{	
 							Position newPosition = new Position(pointsToVisit.getFirst().getX(),pointsToVisit.getFirst().getY());
 							newAction = new BDSMMoveAction(space, currentPosition, newPosition);
-							
+							//Will display graphics if set to true.
 							if(showMyGraphics)
 							{
 							//LINE!!!
@@ -251,6 +251,7 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 				timeSincePlan++;
 			}
 			
+			//Checks that the previous A* action is completed.
 			if(current != null)
 			{
 				if(!current.isMovementFinished(space))
@@ -265,7 +266,7 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 				{	
 					Position newPosition = new Position(pointsToVisit.getFirst().getX(),pointsToVisit.getFirst().getY());
 					newAction = new BDSMMoveAction(space, currentPosition, newPosition);
-					
+					//This will display graphics if they are enabled.
 					if(showMyGraphics)
 					{
 					//LINE!!!
@@ -304,7 +305,7 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 			
 			if (asteroid != null) {
 				asteroidToShipMap.put(asteroid.getId(), ship);
-				
+				//Re-plans every 10 steps.
 				if(timeSincePlan >= 10) {
 					current = null;
 					timeSincePlan = 0;
@@ -316,7 +317,7 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 				{
 					timeSincePlan++;
 				}
-				
+				//Checks to make sure that the current A* is move is finished.
 				if(current != null)
 				{
 					if(!current.isMovementFinished(space))
@@ -324,16 +325,18 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 						return current;
 					}
 				}
+				//Will create actions for A* points.
 				if (pointsToVisit != null)
 				{
 					if(!pointsToVisit.isEmpty())
 					{	
+						//Will assign a Position variable with the positions.
 						Position newPosition = new Position(pointsToVisit.getFirst().getX(),pointsToVisit.getFirst().getY());
-						//newAction = new BDSMMoveToObjectAction(space, currentPosition, newPosition,asteroid);
+						//Create the action to move to the A* position.
 						newAction = new BDSMMoveAction(space, currentPosition, newPosition, asteroid);
+						//This will displayed graphics if true.
 						if(showMyGraphics)
 						{
-						//LINE!!!
 							graphicsToAdd.add(new StarGraphics(3, Color.RED, newPosition));
 							LineGraphics line = new LineGraphics(currentPosition, newPosition, 
 									space.findShortestDistanceVector(currentPosition, newPosition));
@@ -347,8 +350,7 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 				}
 				
 				// Runs a local search
-				newAction = new BDSMMoveToObjectAction(space, currentPosition, asteroid, 
-						asteroid.getPosition().getTranslationalVelocity());			
+				newAction = new BDSMMoveToObjectAction(space, currentPosition, asteroid, asteroid.getPosition().getTranslationalVelocity());			
 				
 				return newAction;
 			}

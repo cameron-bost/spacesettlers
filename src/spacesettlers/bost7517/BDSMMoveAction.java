@@ -64,7 +64,8 @@ public class BDSMMoveAction extends AbstractAction {
 	protected Position originalGoalLocation;
 	protected AbstractObject goalObject;
 	/**
-	 * Make a new move action and save the goal locations.  
+	 * Created for A* as MoveToObjects would cause the ship to accelerate too quickly. This gives control of the ship as it approaches changing/
+	 * Non-changing asteroids.
 	 * 
 	 * @param space physics for spacewar movements
 	 * @param currentLocation the current location of the ship
@@ -89,6 +90,7 @@ public class BDSMMoveAction extends AbstractAction {
 		KpRotational = 1.6;
 		KvTranslational = 0.56f;
 		KpTranslational = 0.08f;
+		//These are added in order to keep track of asteroids.
 		this.originalGoalLocation = goalObject.getPosition().deepCopy();
 		this.goalObject = goalObject;
 		}
@@ -356,8 +358,12 @@ public class BDSMMoveAction extends AbstractAction {
 		movement.setAngularAccleration(angularAccel);		
 		Vector2D goalAccel = pdControlMoveToGoal(space, targetLocation, ship.getPosition(), targetVelocity);
 		movement.setTranslationalAcceleration(goalAccel);
+		
+		/*
+		 * These are added purely for chasing asteroids.
+		 * These are needed in order to make sure that the asteroid exist on the map still.
+		 */
 		AbstractObject newGoalObj = null;
-		//Still exist?
 		if(goalObject != null) {
 			newGoalObj = space.getObjectById(goalObject.getId());
 		}
@@ -378,7 +384,8 @@ public class BDSMMoveAction extends AbstractAction {
 			//System.out.println("Goal object moved");
 			isFinished = true;
 		}
-
+		
+		
 		// figure out if it has reached the goal
 		if ((goalAccel.getMagnitude() < TARGET_REACHED_ACCEL) ||
 				(space.findShortestDistance(targetLocation, ship.getPosition()) < TARGET_REACHED_ERROR+20)) {

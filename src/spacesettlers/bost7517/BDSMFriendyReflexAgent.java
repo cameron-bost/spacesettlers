@@ -61,13 +61,13 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 	 */
 	ExampleKnowledge myKnowledge;
 	
-	private int timeSincePlan = 20;
+	private int timeSincePlan = 10;
 	
 	
 	/**
 	 * Final Variables
 	 */
-	final double LOW_ENERGY_THRESHOLD = 1500; // #P1 - Lowered 2000 -> 1500
+	final double LOW_ENERGY_THRESHOLD = 2500; // #P1 - Lowered 2000 -> 1500
 	final double RESOURCE_THRESHOLD = 2500;   // #P1 - Raised 500 -> 2000
 	final double BASE_BUYING_DISTANCE = 350; // #P1 - raised 200 -> 350 
 	
@@ -168,9 +168,10 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 			//Replans every 20 timesteps.
 			if(current != null)
 			{
+				
 				if(energyTarget != null) {
 					
-					if(timeSincePlan >= 20) {
+					if(timeSincePlan >= 10) {
 						current = null;
 						timeSincePlan = 0;
 						currentPath = graph.getPathTo(ship,  energyTarget, space);
@@ -181,8 +182,6 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 					{
 						timeSincePlan++;
 					}
-					//Run Action
-					//newAction = new BDSMMoveToObjectAction(space, currentPosition, energyTarget); //OLD METHOD
 					if(current != null)
 					{
 						if(!current.isMovementFinished(space))
@@ -240,7 +239,7 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 			Base base = AgentUtils.findNearestBase(space, ship);
 			
 			// If time step is greater then 20 will rerun planning.
-			if(timeSincePlan >= 20) {
+			if(timeSincePlan >= 10) {
 				current = null;
 				timeSincePlan = 0;
 				currentPath = graph.getPathTo(ship,  base, space);
@@ -330,8 +329,8 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 					if(!pointsToVisit.isEmpty())
 					{	
 						Position newPosition = new Position(pointsToVisit.getFirst().getX(),pointsToVisit.getFirst().getY());
-						newAction = new BDSMMoveAction(space, currentPosition, newPosition);
-						
+						//newAction = new BDSMMoveToObjectAction(space, currentPosition, newPosition,asteroid);
+						newAction = new BDSMMoveAction(space, currentPosition, newPosition, asteroid);
 						if(showMyGraphics)
 						{
 						//LINE!!!
@@ -351,11 +350,6 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 				newAction = new BDSMMoveToObjectAction(space, currentPosition, asteroid, 
 						asteroid.getPosition().getTranslationalVelocity());			
 				
-				if(debug)
-				{
-					System.out.println("<Action Declaration> - Chasing asteroid");
-					System.out.println("<Velocity Check> - "+ship.getPosition().getTranslationalVelocity());
-				}
 				return newAction;
 			}
 		}

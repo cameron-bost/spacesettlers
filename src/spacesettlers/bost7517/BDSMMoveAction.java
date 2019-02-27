@@ -1,6 +1,7 @@
 package spacesettlers.bost7517;
 
 import spacesettlers.actions.AbstractAction;
+import spacesettlers.objects.AbstractObject;
 import spacesettlers.objects.Drone;
 import spacesettlers.objects.Ship;
 import spacesettlers.simulator.Toroidal2DPhysics;
@@ -56,7 +57,41 @@ public class BDSMMoveAction extends AbstractAction {
 	 * Constants for pd control
 	 */
 	double KpTranslational, KvTranslational, KpRotational, KvRotational;
+	
+	/**
+	 * Store original goal location
+	 */
+	protected Position originalGoalLocation;
+	protected AbstractObject goalObject;
+	/**
+	 * Make a new move action and save the goal locations.  
+	 * 
+	 * @param space physics for spacewar movements
+	 * @param currentLocation the current location of the ship
+	 * @param targetLocation the target location of the ship
+	 * @param targetVelocity the velocity the ship should be at when it reaches its target location
+	 * @throws SpaceSettlersActionException
+	 */
+	public BDSMMoveAction(Toroidal2DPhysics space, Position currentLocation, 
+			Position targetLocation, AbstractObject goalObject) {
+		super();
 
+		if (Double.isFinite(targetLocation.getX()) && Double.isFinite(targetLocation.getY())) {
+			this.targetLocation = targetLocation;
+		} else {
+			System.out.println("Error: you called MoveAction with a target location that is not finite. Using current instead.");
+			this.targetLocation = currentLocation;
+		}
+
+		this.targetVelocity = new Vector2D();
+		this.isFinished = false;
+		KvRotational = 2.53;
+		KpRotational = 1.6;
+		KvTranslational = 0.56f;
+		KpTranslational = 0.08f;
+		this.originalGoalLocation = goalObject.getPosition().deepCopy();
+		this.goalObject = goalObject;
+		}
 	/**
 	 * Make a new move action and save the goal locations.  
 	 * 
@@ -285,18 +320,18 @@ public class BDSMMoveAction extends AbstractAction {
 		// take care of wrap-around
 		Vector2D shortestDist = space.findShortestDistanceVector(currentLoc, goalLoc);
 		
-		double xError = shortestDist.getXValue()*4.2;
-		double yError = shortestDist.getYValue()*4.2;
+		double xError = shortestDist.getXValue()*3.2;
+		double yError = shortestDist.getYValue()*3.2;
 		//System.out.println("xerror is " + xError + " yError is " + yError);
 		
 		//System.out.println("Goal velocity is " + goalVelocity);
 		//System.out.println("Current velocity is " + currentLoc.getTranslationalVelocity());
 		double velocityErrorX = (goalVelocity.getXValue() - currentLoc.getTranslationalVelocityX()*.5);
-		double velocityErrorY = (goalVelocity.getYValue() - currentLoc.getTranslationalVelocityY())*.5;
+		double velocityErrorY = (goalVelocity.getYValue() - currentLoc.getTranslationalVelocityY()*.5);
 		//System.out.println("Velocity error is " + velocityErrorX + " ," + velocityErrorY);
 
-		double xAccel = pdControlTranslate(xError*1.7, velocityErrorX);
-		double yAccel = pdControlTranslate(yError*1.7, velocityErrorY);
+		double xAccel = pdControlTranslate(xError, velocityErrorX);
+		double yAccel = pdControlTranslate(yError, velocityErrorY);
 		
 		//System.out.println("Translation accel is " + xAccel + ", " + yAccel);
 		//System.out.println("Orienting to goal with " + xAccel + ", " + yAccel);
@@ -321,13 +356,32 @@ public class BDSMMoveAction extends AbstractAction {
 		movement.setAngularAccleration(angularAccel);		
 		Vector2D goalAccel = pdControlMoveToGoal(space, targetLocation, ship.getPosition(), targetVelocity);
 		movement.setTranslationalAcceleration(goalAccel);
-
+		AbstractObject newGoalObj = null;
+		//Still exist?
+		if(goalObject != null) {
+			newGoalObj = space.getObjectById(goalObject.getId());
+		}
+		// goal object disappeared
+		if (newGoalObj == null) {
+			//System.out.println("Goal object disappeared");
+			isFinished = true;
+		}
 		
+		// goal object died
+		if (newGoalObj != null && !newGoalObj.isAlive()) {
+			//System.out.println("Goal object dead");
+			isFinished = true;
+		} 
+
+		// goal object moved
+		if (newGoalObj != null && !newGoalObj.getPosition().equalsLocationOnly(originalGoalLocation)) {
+			//System.out.println("Goal object moved");
+			isFinished = true;
+		}
 
 		// figure out if it has reached the goal
 		if ((goalAccel.getMagnitude() < TARGET_REACHED_ACCEL) ||
 				(space.findShortestDistance(targetLocation, ship.getPosition()) < TARGET_REACHED_ERROR+20)) {
-			System.out.println("Finished");
 			isFinished = true;
 		}
 		

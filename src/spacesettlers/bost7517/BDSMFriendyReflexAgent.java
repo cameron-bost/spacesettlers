@@ -1,8 +1,6 @@
 package spacesettlers.bost7517;
 
 import java.awt.Color;
-import java.awt.Point;
-import java.awt.geom.Point2D;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -21,12 +19,12 @@ import spacesettlers.actions.AbstractAction;
 import spacesettlers.actions.DoNothingAction;
 import spacesettlers.actions.PurchaseCosts;
 import spacesettlers.actions.PurchaseTypes;
-import spacesettlers.bost7517.AStarPath;
 import spacesettlers.clients.ExampleKnowledge;
 import spacesettlers.clients.TeamClient;
 import spacesettlers.graphics.LineGraphics;
 import spacesettlers.graphics.SpacewarGraphics;
 import spacesettlers.graphics.StarGraphics;
+import spacesettlers.graphics.TargetGraphics;
 import spacesettlers.objects.AbstractActionableObject;
 import spacesettlers.objects.AbstractObject;
 import spacesettlers.objects.Asteroid;
@@ -46,7 +44,7 @@ import spacesettlers.utilities.Vector2D;
  */
 public class BDSMFriendyReflexAgent extends TeamClient {
 	private boolean debug = false;
-	private boolean showMyGraphics = false;
+	private boolean showMyGraphics = true;
 	HashMap <UUID, Ship> asteroidToShipMap;
 	HashMap <UUID, Boolean> aimingForBase;
 	HashMap <UUID, Boolean> justHitBase;
@@ -139,7 +137,7 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 		    	LineGraphics t= new LineGraphics(heightBottom,heightTop,te);
 				heightBottom = new Position(i,0);
 				heightTop = new Position(i,space.getHeight());
-				t.setLineColor(Color.white);
+				t.setLineColor(Color.gray);
 				graphicsToAdd.add(t);
 		    }
 		    
@@ -152,11 +150,12 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 		    	LineGraphics t= new LineGraphics(heightBottom,heightTop,te);
 				heightBottom = new Position(0,i);
 				heightTop = new Position(space.getWidth(),i);
-				t.setLineColor(Color.white);
+				t.setLineColor(Color.gray);
 				graphicsToAdd.add(t);
 		    }
 		    
 		    drawSearchTree(space);
+		    drawBlockedGrids();
 		}
 		// Rule 1. If energy is low, go for nearest energy source
 
@@ -229,7 +228,7 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 					System.out.println("Energy target returned null");
 				}
 				//Continues to next rule
-				}
+			}
 			
 		}
 
@@ -364,6 +363,15 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 	
 	
 	
+	private void drawBlockedGrids() {
+		if(showMyGraphics) {
+			for(Vertex v: graph.getBlockedVertices()) {
+				SpacewarGraphics g = new TargetGraphics(15, graph.getCentralCoordinate(v));
+				graphicsToAdd.add(g);
+			}
+		}
+	}
+
 	/**
 	 * This function will find the closest valued asteroid. It does not determine by the amount that the asteroid is worth.
 	 * 

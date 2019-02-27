@@ -231,11 +231,13 @@ public class AgentUtils {
 	 * @return Whether object is an obstacle
 	 */
 	public static boolean isObstacle(Ship ship, AbstractObject object) {
-		return object.getId().equals(ship.getId()) || !object.isAlive() 
-				|| object instanceof Missile || object instanceof Beacon
-				|| object instanceof AiCore 
-				|| (object instanceof Asteroid && !((Asteroid) object).isMineable())
-				|| object instanceof Base;
+		return !object.getId().equals(ship.getId()) 
+				&& (
+					object instanceof Missile 
+					|| object instanceof Ship
+					|| (object instanceof Asteroid && !((Asteroid) object).isMineable())
+					|| object instanceof Base
+				);
 	}
 
 }

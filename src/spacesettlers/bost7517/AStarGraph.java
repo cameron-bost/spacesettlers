@@ -38,6 +38,9 @@ public class AStarGraph {
 	private LinkedList<AStarPath> searchTree;
 	private LinkedList<GBFSPath> searchTreeGBFS;
 	
+	/**Vertices marked as obstacles*/
+	private LinkedList<Vertex> blockedGrids;
+	
 	/**
 	 * Constructor for graph. Window parameters and asteroid radius are required.
 	 * 
@@ -51,6 +54,7 @@ public class AStarGraph {
 		debug = _debug;
 		searchTree = new LinkedList<>();
 		searchTreeGBFS = new LinkedList<>();
+		blockedGrids = new LinkedList<>();
 		initMatrix();
 	}
 	
@@ -298,6 +302,7 @@ public class AStarGraph {
 		
 		// Set heuristic values for all vertices
 		int blockedCount = 0;
+		blockedGrids = new LinkedList<>();
 		for(int row = 0; row < mtxRows; row++) {
 			for(int col = 0; col < mtxCols; col++) {
 				// Get vertex at this position
@@ -318,6 +323,7 @@ public class AStarGraph {
 				else {
 					blockedCount++;
 					heuristicValue = Double.MAX_VALUE;
+					blockedGrids.add(v);
 				}
 				v.setHValue(heuristicValue);
 			}
@@ -329,9 +335,8 @@ public class AStarGraph {
 	}
 	
 	/**
-	 * Checks if a vertex contains any obstacles by performing
-	 * two vertical sweeps with radius GRID_SIZE/4. Small pockets are 
-	 * left unchecked, but are too small to contain obstacles.
+	 * Checks if a vertex contains any obstacles.
+	 * Code inspired by Toroidal2DPhysics.isLocationFree()
 	 * 
 	 * @param space physics model for the game
 	 * @param obstructions set of obstructions to check for
@@ -339,13 +344,15 @@ public class AStarGraph {
 	 * @return whether this vertex is clear of obstacles (true -> no obstacles)
 	 */
 	private boolean gridIsClearOfObstacles(Toroidal2DPhysics space, Set<AbstractObject> obstructions, Position pc) {
-		int quarterG = GRID_SIZE/4;
-		Position pi1 = new Position(pc.getX()+quarterG, pc.getY() - quarterG);
-		Position pf1 = new Position(pc.getX()+quarterG, pc.getY() + quarterG);
-		Position pi2 = new Position(pc.getX()-quarterG, pc.getY() - quarterG);
-		Position pf2 = new Position(pc.getX()-quarterG, pc.getY() + quarterG);
-		return space.isPathClearOfObstructions(pi1, pf1, obstructions, quarterG)
-				&& space.isPathClearOfObstructions(pi2, pf2, obstructions, quarterG);
+		int radius = GRID_SIZE*3/4;
+		for (AbstractObject object : obstructions) {
+			// fixed bug where it only checked radius and not diameter
+			if (space.findShortestDistanceVector(object.getPosition(), pc)
+					.getMagnitude() <= (radius + (2 * object.getRadius()))) {
+				return false;
+			}
+		}
+		return true;
 	}
 	
 	/**
@@ -388,5 +395,9 @@ public class AStarGraph {
 	
 	public LinkedList<GBFSPath> getSearchTreeGBFS(){
 		return searchTreeGBFS;
+	}
+
+	public LinkedList<Vertex> getBlockedVertices() {
+		return blockedGrids;
 	}
 }

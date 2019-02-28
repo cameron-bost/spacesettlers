@@ -55,6 +55,7 @@ public class BDSM_AStarTestAgent extends TeamClient {
 	private ArrayList<SpacewarGraphics> graphicsToAdd;
 	
 	private AStarPath currentPath = null;
+	private GBFSPath currentPathGBFS = null;
 	
 	private LinkedList<AStarPath> currentSearchTree;
 	
@@ -69,10 +70,7 @@ public class BDSM_AStarTestAgent extends TeamClient {
 	/**Data writer for statistical output*/
 	private BufferedWriter dataOut;
 	
-	private long planTime = 0L;
-	
-	private final String FILE_HEADER = "planTime,treeSize,pathCost,bestDistance";
-	
+	private final String FILE_HEADER = "minCost,astarCost,gbfsCost";
 	
 	/**
 	 * Final Variables
@@ -248,20 +246,17 @@ public class BDSM_AStarTestAgent extends TeamClient {
 				
 				if(timeSincePlan >= 20) {
 					timeSincePlan = 0;
-					long startPathingTime = new Date().getTime();
 					currentPath = graph.getPathTo(ship,  asteroid, space);
-					long endPathingTime = new Date().getTime();
-					currentSearchTree = graph.getSearchTree();
-					planTime = endPathingTime - startPathingTime;
+					currentPathGBFS = graph.getPathToGBFS(ship,  asteroid, space);
 					// Export data
-					exportData(space, ship, asteroid);
+					exportData((int)space.findShortestDistance(ship.getPosition(), asteroid.getPosition()), currentPath.getTotalCost(), currentPathGBFS.getTotalCost());
 				}
 				else {
 					timeSincePlan++;
 				}
 				//newAction = new MoveAction(space,currentPosition,asteroid.getPosition());
 				newAction = new BDSMMoveToObjectAction(space, currentPosition, asteroid, 
-						asteroid.getPosition().getTranslationalVelocity());			
+						asteroid.getPosition().getTranslationalVelocity());
 				
 				if(debug)
 				{
@@ -279,17 +274,16 @@ public class BDSM_AStarTestAgent extends TeamClient {
 		return ship.getCurrentAction();
 	}
 	
-	private void exportData(Toroidal2DPhysics space, Ship ship, AbstractObject target) {
+	private void exportData(int min_cost, int astar_path_cost, int gbfs_path_cost) {
 		// Export data
 		try {
-			int distanceToTarget = (int)space.findShortestDistance(ship.getPosition(), target.getPosition());
-			String dataOutStr = String.format("%d,%d,%d,%d", planTime,currentSearchTree.size(),currentPath.getTotalCost(),distanceToTarget);
+			String dataOutStr = String.format("%d,%d,%d", min_cost,astar_path_cost,gbfs_path_cost);
 			dataOut.write(dataOutStr);
 			dataOut.newLine();
-			System.out.println("<A*.exportStats> - Wrote data to file: "+dataOutStr);
+			System.out.println("<SearchTest.exportStats> - Wrote data to file: "+dataOutStr);
 		}
 		catch(IOException e) {
-			System.out.println("<A*.exportStats> - Error while writing data to file: "+e.getMessage());
+			System.out.println("<SearchTest.exportStats> - Error while writing data to file: "+e.getMessage());
 		}
 	}
 	
@@ -387,12 +381,13 @@ public class BDSM_AStarTestAgent extends TeamClient {
 		}
 		
 		try {
-			dataOut = new BufferedWriter(new FileWriter("astar_data.txt"));
-			System.out.println("<A*.INIT> - Opened output stream");
+			dataOut = new BufferedWriter(new FileWriter("search_compare_data.txt"));
+			System.out.println("<SearchTest.INIT> - Opened output stream");
 			dataOut.write(FILE_HEADER);
-			System.out.println("<A*.INIT> - Wrote file header");
+			dataOut.newLine();
+			System.out.println("<SearchTest.INIT> - Wrote file header");
 		} catch (IOException e) {
-			System.out.println("<A*.INIT> - Error while opening output stream: "+e.getMessage());
+			System.out.println("<SearchTest.INIT> - Error while opening output stream: "+e.getMessage());
 		}
 		
 		XStream xstream = new XStream();

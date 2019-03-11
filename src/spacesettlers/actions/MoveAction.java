@@ -300,11 +300,9 @@ public class MoveAction extends AbstractAction {
 
 		// figure out if it has reached the goal
 		if ((goalAccel.getMagnitude() < TARGET_REACHED_ACCEL) ||
-				(space.findShortestDistance(targetLocation, ship.getPosition()) < TARGET_REACHED_ERROR + 20)) {
+				(space.findShortestDistance(targetLocation, ship.getPosition()) < TARGET_REACHED_ERROR)) {
 			isFinished = true;
 		}
-		
-	
 
 		return movement;
 	}

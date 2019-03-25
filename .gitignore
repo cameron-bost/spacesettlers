@@ -6,4 +6,5 @@
 *_test.java
 *_test.xml
 *.html
+*.txt
 src/foo.xml.gz

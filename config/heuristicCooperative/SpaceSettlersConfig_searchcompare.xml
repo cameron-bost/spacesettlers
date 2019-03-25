@@ -43,12 +43,12 @@
 			<configFile>donothing-clientinit.xml</configFile>
 		</HighLevelTeamConfig>		
 		<HighLevelTeamConfig>
-			<teamName>BDSM GBFS</teamName>
-			<configFile>spacesettlersinit_gbfs.xml</configFile>
+			<teamName>SearchTester</teamName>
+			<configFile>spacesettlersinit_astar.xml</configFile>
 		</HighLevelTeamConfig>
 		<HighLevelTeamConfig>
-			<teamName>BDSM A*</teamName>
-			<configFile>spacesettlersinit_astar.xml</configFile>
+			<teamName>HeuristicMiner</teamName>
+			<configFile>passive-heuristic-clientinit.xml</configFile>
 		</HighLevelTeamConfig>
 	</teams>
 
@@ -64,10 +64,10 @@
 			<teamName>BeaconCollectorTeam</teamName>
 		</BaseConfig>
 		<BaseConfig>
-			<teamName>BDSM GBFS</teamName>
+			<teamName>SearchTester</teamName>
 		</BaseConfig>
 		<BaseConfig>
-			<teamName>BDSM A*</teamName>
+			<teamName>HeuristicMiner</teamName>
 		</BaseConfig>
 	</bases>
 	

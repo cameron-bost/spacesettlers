@@ -18,7 +18,7 @@ public class AtkiGAPopulation {
 	/**
 	 * Make a new empty population
 	 */
-	public AtkiGAPopulation(int populationSize) {
+	public AtkiGAPopulation(int populationSize, AStarGraph _graph) {
 		super();
 		
 		// start at member zero
@@ -28,7 +28,7 @@ public class AtkiGAPopulation {
 		population = new AtkiGAChromosome[populationSize];
 		
 		for (int i = 0; i < populationSize; i++) {
-			population[i] = new AtkiGAChromosome();
+			population[i] = new AtkiGAChromosome(_graph);
 		}
 		
 		// make space for the fitness scores

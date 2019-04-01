@@ -471,7 +471,7 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 	 */
 	@Override
 	public void initialize(Toroidal2DPhysics space) {
-		graph = new spacesettlers.bost7517.AStarGraph(space.getHeight(), space.getWidth(), false);
+		graph = AStarGraph.getInstance(space.getHeight(), space.getWidth(), false);
 		asteroidToShipMap = new HashMap<UUID, Ship>();
 		aimingForBase = new HashMap<UUID, Boolean>();
 		justHitBase = new HashMap<UUID, Boolean>();

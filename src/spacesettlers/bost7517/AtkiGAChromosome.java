@@ -5,6 +5,7 @@ import java.util.LinkedList;
 import java.util.UUID;
 
 import spacesettlers.actions.AbstractAction;
+import spacesettlers.objects.AbstractObject;
 import spacesettlers.objects.Ship;
 import spacesettlers.simulator.Toroidal2DPhysics;
 import spacesettlers.utilities.Position;
@@ -15,127 +16,128 @@ import spacesettlers.utilities.Position;
  * the policy and knowledge base for that individual.
  * 
  * @author Joshua Atkinson, Cameron Bost
- *
+ * @version 0.3
  */
 public class AtkiGAChromosome {
+	/**
+	 * Maps states to actions for easy lookup.
+	 */
 	private HashMap<AtkiGAState, AbstractAction> policy;
-	HashMap<UUID, Ship> asteroidToShipMap;
-	private int timeSincePlan = 10;
+	
+	/**
+	 * Tracks asteroids being targeted, indicates which ship.
+	 */
+	private HashMap<UUID, Ship> asteroidToShipMap;
+	
+	/**
+	 * Number of time-steps since last planning routine.
+	 */
+	private int timeSincePlan = AgentUtils.PLAN_INTERVAL;
+	
+	/**
+	 * Last search tree produced by A* search
+	 */
 	private LinkedList<AStarPath> currentSearchTree;
+	
+	/**
+	 * Current planned route, stored as sequence of positions.
+	 */
 	private LinkedList<Position> pointsToVisit;
-	boolean debug = false;
+	
+	/**
+	 * A* Graph, used for path-finding
+	 */
 	private AStarGraph graph;
+	/**
+	 * Current path being followed
+	 */
 	private AStarPath currentPath;
-	HashMap<UUID, Boolean> aimingForBase;
-	HashMap<UUID, Boolean> justHitBase;
+	
+	/**
+	 * Given in default reflex agent: tracks whether a ship is aiming for base
+	 */
+	private HashMap<UUID, Boolean> aimingForBase;
+	/**
+	 * Given in default agent: tracks if a ship has just struck the base
+	 * TODO check if base collision is still handled correctly (probably not)
+	 */
+	private HashMap<UUID, Boolean> justHitBase;
+	
+	/**
+	 * Current action being followed by ship
+	 * TODO get rid of this
+	 */
+	private AbstractAction currentAction;
 
 	/**
-	 * Final Variables
+	 * Chromosome constructor, global graph object is required argument.
+	 * 
+	 * @param _graph Global A* graph object
 	 */
-	final double LOW_ENERGY_THRESHOLD = 2750; // #P1 - Lowered 2000 -> 1500
-	final double RESOURCE_THRESHOLD = 1000; // #P1 - Raised 500 -> 2000
-	final double BASE_BUYING_DISTANCE = 400; // #P1 - raised 200 -> 350
-
 	public AtkiGAChromosome(AStarGraph _graph) {
-
+		graph = _graph;
 		policy = new HashMap<AtkiGAState, AbstractAction>();
 		asteroidToShipMap = new HashMap<UUID, Ship>();
-		graph = _graph;
 		aimingForBase = new HashMap<UUID, Boolean>();
 		justHitBase = new HashMap<UUID, Boolean>();
 	}
 
 	/**
-	 * Returns either the action currently specified by the policy or randomly
-	 * selects one if this is a new state
+	 * Determines current action by consulting policy based on current state.
 	 * 
-	 * @param currentState
-	 * @return
+	 * @param space physics model
+	 * @param myShip ship for which action is being determined
+	 * @param currentState current state
+	 * @param policyNumber policy number being employed
+	 * @return Action for ship to perform during this time-step.
 	 */
 	public AbstractAction getCurrentAction(Toroidal2DPhysics space, Ship myShip, AtkiGAState currentState,
 			int policyNumber) {
+		// If policy does not contain this state, determine correct action then add to policy
 		if (!policy.containsKey(currentState)) {
-			/*
-			 * ################### ## Original code ## ###################
-			 * 
-			 * 
-			 * // randomly chose to either do nothing or go to the nearest // asteroid. Note
-			 * this needs to be changed in a real agent as it won't learn // much here!
-			 * 
-			 * 
-			 * if (rand.nextBoolean()) { policy.put(currentState, new DoNothingAction()); }
-			 * else { //System.out.println("Moving to nearestMineable Asteroid " +
-			 * myShip.getPosition() + " nearest " +
-			 * currentState.getNearestMineableAsteroid().getPosition());
-			 * policy.put(currentState, new MoveToObjectAction(space, myShip.getPosition(),
-			 * currentState.getNearestMineableAsteroid())); }
-			 * 
-			 * 
-			 * ############## ## NEW CODE ## ##############
-			 * 
-			 */
-			AbstractAction current = myShip.getCurrentAction();
-
+			if(AgentUtils.DEBUG) {
+				System.out.println("<Chromosome.getAction> - calling policy #"+policyNumber);
+			}
+			
+			// Default action is currentAction
+			currentAction = myShip.getCurrentAction();
+			
+			// Policy 1: Go to energy source
 			if (policyNumber == 1) {
-				if (current != null) {
-					if (currentState.getEnergySource() != null) {
-						// Re-plans every 20 timesteps.
-						if (timeSincePlan >= 10) {
-							current = null; // resets current stepp to null so it is able to update step
-							timeSincePlan = 0; // resets times plan back to 0
-							//Will get the current path that a* has chosen
-							currentPath = graph.getPathTo(myShip, currentState.getEnergySource(), space);
-							currentSearchTree = graph.getSearchTree(); // Returns a search tree
-							pointsToVisit = new LinkedList<Position>(currentPath.getPositions()); // Will contain all
-																									// the points for a*
-						} else {
-							timeSincePlan++;
-						}
+				if (currentState.getEnergySource() != null) {
+					checkForPlan(space, myShip, currentState.getEnergySource());
 
-						if (current != null && (myShip.getEnergy() > LOW_ENERGY_THRESHOLD)) // Want to make sure not to
-																							// interrupt an a* move that
-																							// has not finished yet.
-						{
-							if (!current.isMovementFinished(space)) // checks if the object has stopped moving
-							{
-								return current;
-							}
-						}
-						// Call points to create a new action to move to that object.
-						if (pointsToVisit != null) {
-							if (!pointsToVisit.isEmpty()) {
-								Position newPosition = new Position(pointsToVisit.getFirst().getX(),
-										pointsToVisit.getFirst().getY());
-								policy.put(currentState, new BDSMMoveAction(space, myShip.getPosition(), newPosition));
-									
-								pointsToVisit.poll();//pops the top
-							}
-						}
-
-						// Planning currently need to run local search
-						policy.put(currentState, new BDSMMoveToObjectAction(space, myShip.getPosition(),
-								currentState.getEnergySource()));
+					// Want to make sure not to interrupt an a* move that has not finished yet.
+					if (currentAction != null && !currentAction.isMovementFinished(space)) // checks if the object has stopped moving
+					{
+						return currentAction;
 					}
+					// Call points to create a new action to move to that object.
+					if (pointsToVisit != null) {
+						if (!pointsToVisit.isEmpty()) {
+							Position newPosition = new Position(pointsToVisit.getFirst().getX(),
+									pointsToVisit.getFirst().getY());
+							policy.put(currentState, new BDSMMoveAction(space, myShip.getPosition(), newPosition));
+								
+							pointsToVisit.poll();//pops the top
+						}
+					}
+
+					// Planning currently need to run local search
+					policy.put(currentState, new BDSMMoveToObjectAction(space, myShip.getPosition(),
+							currentState.getEnergySource()));
 				}
 			}
 
+			// Policy 2: Go to base (dump resources)
 			if (policyNumber == 2) {
-				if (timeSincePlan >= 10) {
-					current = null;
-					timeSincePlan = 0;
-					if (currentState.getEnergySource() != null)
-						currentPath = graph.getPathTo(myShip, currentState.getEnergySource(), space);
-					currentSearchTree = graph.getSearchTree();
-					pointsToVisit = new LinkedList<Position>(currentPath.getPositions());
-				} else {
-					timeSincePlan++;
-				}
+				checkForPlan(space, myShip, currentState.getBase());
 
 				// Checks that the previous A* action is completed.
-				if (current != null) {
-					if (!current.isMovementFinished(space)) {
+				if (currentAction != null) {
+					if (!currentAction.isMovementFinished(space)) {
 						aimingForBase.put(myShip.getId(), true);
-						return current;
+						return currentAction;
 					}
 				}
 				if (pointsToVisit != null) {
@@ -153,31 +155,23 @@ public class AtkiGAChromosome {
 						new BDSMMoveToObjectAction(space, myShip.getPosition(), currentState.getBase()));
 				aimingForBase.put(myShip.getId(), true);
 
-				if (debug) {
+				if (AgentUtils.DEBUG) {
 					System.out.println("<Action Declaration> - Deposit (" + myShip.getResources().getTotal() + ")");
 				}
 			}
+			
+			// Policy 3: Go to best asteroid
 			if (policyNumber == 3) {
 				if (currentState.getNearestMineableAsteroid() != null) {
-					System.out.println("<DEBUG> - calling policy inside of policy 3");
 					asteroidToShipMap.put(currentState.getNearestMineableAsteroid().getId(), myShip);
-					// Re-plans every 10 steps.
-					if (timeSincePlan >= 10) {
-						current = null;
-						timeSincePlan = 0;
-						currentPath = graph.getPathTo(myShip, currentState.getNearestMineableAsteroid(), space);
-						currentSearchTree = graph.getSearchTree();
-						pointsToVisit = new LinkedList<Position>(currentPath.getPositions());
-					} else {
-						timeSincePlan++;
-					}
+					checkForPlan(space, myShip, currentState.getNearestMineableAsteroid());
 					// Checks to make sure that the current A* is move is finished.
-					if (current != null) {
-						if (!current.isMovementFinished(space)) {
-							return current;
+					if (currentAction != null) {
+						if (!currentAction.isMovementFinished(space)) {
+							return currentAction;
 						}
 					}
-					//Will create actions for A* points.
+					// Will create actions for A* points.
 					if (pointsToVisit != null)
 					{
 						if(!pointsToVisit.isEmpty())
@@ -185,7 +179,6 @@ public class AtkiGAChromosome {
 							//Will assign a Position variable with the positions.
 							Position newPosition = new Position(pointsToVisit.getFirst().getX(),pointsToVisit.getFirst().getY());
 							//Create the action to move to the A* position.
-							//newAction = new BDSMMoveAction(space, myShip.getPosition(), newPosition, currentState.nearestMineableAsteroid);
 							policy.put(currentState, new BDSMMoveAction(space, myShip.getPosition(), newPosition, currentState.getNearestMineableAsteroid()));
 							
 							pointsToVisit.poll();//pops the top
@@ -202,16 +195,38 @@ public class AtkiGAChromosome {
 		return policy.get(currentState);
 	}
 	
+	void checkForPlan(Toroidal2DPhysics space, Ship myShip, AbstractObject target) {
+		if (timeSincePlan >= AgentUtils.PLAN_INTERVAL) {
+			currentAction = null;
+			timeSincePlan = 0;
+			currentPath = graph.getPathTo(myShip, target, space);
+			currentSearchTree = graph.getSearchTree();
+			pointsToVisit = currentPath.getPositions();
+		} else {
+			timeSincePlan++;
+		}
+	}
+	
+	/**
+	 * Accessor method used in client class to retrieve A* search tree.
+	 * 
+	 * @return Most recent tree generated by A* search.
+	 */
 	public LinkedList<AStarPath> getCurrentSearchTree(){
 		return currentSearchTree;
 	}
 
+	/**
+	 * Accessor method for path being followed by agent.
+	 * @return Current path being followed by agent.
+	 */
 	public AStarPath getCurrentPath() {
 		return currentPath;
 	}
 
 	/**
 	 * Update time step for plan.
+	 * Note: unchanged from ExampleGAChromosome
 	 */
 	public void currentPolicyUpdateTime() {
 		timeSincePlan = timeSincePlan + 1;

@@ -47,14 +47,6 @@ import spacesettlers.utilities.Vector2D;
 
 public class AtkiGAClient extends TeamClient {
 	/**
-	 * Flag for developer debug print statements
-	 */
-	private boolean debug = false;
-	/**
-	 * Flag indicating whether to show graphics.
-	 */
-	private boolean showMyGraphics = true;
-	/**
 	 * Set of graphics to be displayed. Generated during each timestep.
 	 */
 	private ArrayList<SpacewarGraphics> graphicsToAdd;
@@ -76,7 +68,7 @@ public class AtkiGAClient extends TeamClient {
 	/**
 	 * How many steps each policy is evaluated for before moving to the next one
 	 */
-	private int evaluationSteps = 2000;
+	static final int EVALUATION_STEPS = 2000;
 	
 	/**
 	 * How large of a population to evaluate
@@ -95,13 +87,6 @@ public class AtkiGAClient extends TeamClient {
 	 * Local variable for AStar graph grid size (pixels)
 	 */
 	static final int ASTAR_GRID_SIZE = AStarGraph.GRID_SIZE;
-	
-	/**
-	 * Constants
-	 */
-	static final double LOW_ENERGY_THRESHOLD = 4750; // #P1 - Lowered 2000 -> 1500
-	static final double RESOURCE_THRESHOLD = 2000;   // #P1 - Raised 500 -> 2000
-	static final double BASE_BUYING_DISTANCE = 400; // #P1 - raised 200 -> 350
 	
 	@Override
 	public Map<UUID, AbstractAction> getMovementStart(Toroidal2DPhysics space,
@@ -122,12 +107,12 @@ public class AtkiGAClient extends TeamClient {
 				int policyNumber = 0;
 				
 				// Policy 1: if energy is low, target energy beacon
-				if ((ship.getEnergy() < LOW_ENERGY_THRESHOLD)) {
+				if ((ship.getEnergy() < AgentUtils.LOW_ENERGY_THRESHOLD)) {
 					policyNumber = 1;			
 				}
 				
 				// Policy 2: if on-board resources are high, target base 
-				else if (ship.getResources().getTotal() > RESOURCE_THRESHOLD) {
+				else if (ship.getResources().getTotal() > AgentUtils.RESOURCE_THRESHOLD) {
 					policyNumber = 2;	
 				}
 				
@@ -152,11 +137,162 @@ public class AtkiGAClient extends TeamClient {
 		}
 		
 		// Show graphics (if indicated)
-		if(showMyGraphics) {
+		if(AgentUtils.SHOW_GRAPHICS) {
 			showGraphics(space);
 		}
 		
 		return actions;
+	}
+
+	@Override
+	public void getMovementEnd(Toroidal2DPhysics space, Set<AbstractActionableObject> actionableObjects) {
+		/**
+		 * Note: Method unchanged from ExampleGAClient
+		 */
+		// increment the step counter
+		steps++;
+
+		// if the step counter is modulo evaluationSteps, then evaluate this member and move to the next one
+		if (steps % EVALUATION_STEPS == 0) {
+			// note that this method currently scores every policy as zero as this is part of 
+			// what the student has to do
+			population.evaluateFitnessForCurrentMember(space);
+
+			// move to the next member of the population
+			currentPolicy = population.getNextMember();
+
+			if (population.isGenerationFinished()) {
+				// note that this is also an empty method that a student needs to fill in
+				population.makeNextGeneration();
+				
+				currentPolicy = population.getNextMember();
+			}
+			
+		}
+		
+	}
+
+	/**
+	 * Initialize the population by either reading it from the file or making a new one from scratch
+	 * 
+	 * @param space
+	 */
+	@Override
+	public void initialize(Toroidal2DPhysics space) {
+		XStream xstream = new XStream();
+		xstream.alias("ExampleGAPopulation", AtkiGAPopulation.class);
+		graph = AStarGraph.getInstance(space.getHeight(), space.getWidth(), AgentUtils.DEBUG);
+
+		// try to load the population from the existing saved file.  If that failes, start from scratch
+		try { 
+			population = (AtkiGAPopulation) xstream.fromXML(new File(getKnowledgeFile()));
+		} catch (XStreamException e) {
+			// if you get an error, handle it other than a null pointer because
+			// the error will happen the first time you run
+			System.out.println("No existing population found - starting a new one from scratch");
+			population = new AtkiGAPopulation(populationSize, graph, random);
+		}
+		currentPolicy = population.getFirstMember();
+	}
+
+	@Override
+	public void shutDown(Toroidal2DPhysics space) {
+		XStream xstream = new XStream();
+		xstream.alias("ExampleGAPopulation", AtkiGAPopulation.class);
+
+		try { 
+			// if you want to compress the file, change FileOuputStream to a GZIPOutputStream
+			xstream.toXML(population, new FileOutputStream(new File(getKnowledgeFile())));
+		} catch (XStreamException e) {
+			// if you get an error, handle it somehow as it means your knowledge didn't save
+			System.out.println("Can't save knowledge file in shutdown ");
+			System.out.println(e.getMessage());
+		} catch (FileNotFoundException e) {
+			// file is missing so start from scratch (but tell the user)
+			System.out.println("Can't save knowledge file in shutdown ");
+			System.out.println(e.getMessage());
+		}
+	}
+
+	/******************
+	 * Unused methods *
+	 ******************/
+
+	@Override
+	public Map<UUID, SpaceSettlersPowerupEnum> getPowerups(Toroidal2DPhysics space,
+			Set<AbstractActionableObject> actionableObjects) {
+		// TODO Currently unused
+		return null;
+	}
+
+	@Override
+	public Map<UUID, PurchaseTypes> getTeamPurchases(Toroidal2DPhysics space,
+			Set<AbstractActionableObject> actionableObjects, 
+			ResourcePile resourcesAvailable, 
+			PurchaseCosts purchaseCosts) {
+		/**
+		 * If there is enough resourcesAvailable, buy a base.  Place it by finding a ship that is sufficiently
+		 * far away from the existing bases.
+		 */
+		HashMap<UUID, PurchaseTypes> purchases = new HashMap<UUID, PurchaseTypes>();
+		
+		// TODO: Determine if base is impossible to purchase, add heuristic to purchase anyway
+		boolean bought_base = false;
+		if (purchaseCosts.canAfford(PurchaseTypes.BASE, resourcesAvailable)) {
+			for (AbstractActionableObject actionableObject : actionableObjects) {
+				if (actionableObject instanceof Ship) {
+					Ship ship = (Ship) actionableObject;
+					Set<Base> bases = space.getBases();
+
+					// how far away is this ship to a base of my team?
+					boolean buyBase = true;
+					for (Base base : bases) {
+						if (base.getTeamName().equalsIgnoreCase(getTeamName())) {
+							double distance = space.findShortestDistance(ship.getPosition(), base.getPosition());
+							if (distance < AgentUtils.BASE_BUYING_DISTANCE) {
+								buyBase = false;
+							}
+						}
+					}
+					if (buyBase) {
+						purchases.put(ship.getId(), PurchaseTypes.BASE);
+						bought_base = true;
+						System.out.println("Buying a base!!");
+						break;
+					}
+				}
+			}		
+		} 
+		
+		// Ship Purchase
+		if (bought_base == false && purchaseCosts.canAfford(PurchaseTypes.SHIP, resourcesAvailable)) {
+			for (AbstractActionableObject actionableObject : actionableObjects) {
+				// TODO: What if we chose a base to spawn our ship at for a reason, instead of the first available one?
+				if (actionableObject instanceof Base) {
+					Base base = (Base) actionableObject;
+					purchases.put(base.getId(), PurchaseTypes.SHIP);
+					break;
+				}
+			}
+		}
+		return purchases;
+	}
+	
+	/********************
+	 * Graphics methods *
+	 ********************/
+	
+	@Override
+	public Set<SpacewarGraphics> getGraphics() {
+		// If graphics are to be drawn, return them.
+		if(AgentUtils.SHOW_GRAPHICS)
+		{
+			HashSet<SpacewarGraphics> graphics = new HashSet<SpacewarGraphics>();
+			graphics.addAll(graphicsToAdd);
+			graphicsToAdd.clear();
+			return graphics;
+		}
+		return null;
 	}
 	
 	/**
@@ -245,7 +381,7 @@ public class AtkiGAClient extends TeamClient {
 			}
 			for (LineGraphics g : drawnPositions) {
 				g.setLineColor(Color.GREEN);
-				// graphicsToAdd.add(g);
+				graphicsToAdd.add(g);
 			}
 
 		}
@@ -255,157 +391,12 @@ public class AtkiGAClient extends TeamClient {
 	 * Draws all grids in A* graph that are blocked by obstacles.
 	 */
 	private void drawBlockedGrids() {
-		if(showMyGraphics) {
+		if(AgentUtils.SHOW_GRAPHICS) {
 			for(Vertex v: graph.getBlockedVertices()) {
 				SpacewarGraphics g = new TargetGraphics(BLOCKED_GRID_GRAPHIC_RADIUS, graph.getCentralCoordinate(v));
 				graphicsToAdd.add(g);
 			}
 		}
 	}
-
-	@Override
-	public void getMovementEnd(Toroidal2DPhysics space, Set<AbstractActionableObject> actionableObjects) {
-		/**
-		 * Note: Method unchanged from ExampleGAClient
-		 */
-		// increment the step counter
-		steps++;
-
-		// if the step counter is modulo evaluationSteps, then evaluate this member and move to the next one
-		if (steps % evaluationSteps == 0) {
-			// note that this method currently scores every policy as zero as this is part of 
-			// what the student has to do
-			population.evaluateFitnessForCurrentMember(space);
-
-			// move to the next member of the population
-			currentPolicy = population.getNextMember();
-
-			if (population.isGenerationFinished()) {
-				// note that this is also an empty method that a student needs to fill in
-				population.makeNextGeneration();
-				
-				currentPolicy = population.getNextMember();
-			}
-			
-		}
-		
-	}
-
-	@Override
-	public Map<UUID, SpaceSettlersPowerupEnum> getPowerups(Toroidal2DPhysics space,
-			Set<AbstractActionableObject> actionableObjects) {
-		// TODO Currently unused
-		return null;
-	}
-
-	@Override
-	public Map<UUID, PurchaseTypes> getTeamPurchases(Toroidal2DPhysics space,
-			Set<AbstractActionableObject> actionableObjects, 
-			ResourcePile resourcesAvailable, 
-			PurchaseCosts purchaseCosts) {
-		/**
-		 * If there is enough resourcesAvailable, buy a base.  Place it by finding a ship that is sufficiently
-		 * far away from the existing bases.
-		 */
-		HashMap<UUID, PurchaseTypes> purchases = new HashMap<UUID, PurchaseTypes>();
-		
-		// TODO: Determine if base is impossible to purchase, add heuristic to purchase anyway
-		boolean bought_base = false;
-		if (purchaseCosts.canAfford(PurchaseTypes.BASE, resourcesAvailable)) {
-			for (AbstractActionableObject actionableObject : actionableObjects) {
-				if (actionableObject instanceof Ship) {
-					Ship ship = (Ship) actionableObject;
-					Set<Base> bases = space.getBases();
-
-					// how far away is this ship to a base of my team?
-					boolean buyBase = true;
-					for (Base base : bases) {
-						if (base.getTeamName().equalsIgnoreCase(getTeamName())) {
-							double distance = space.findShortestDistance(ship.getPosition(), base.getPosition());
-							if (distance < BASE_BUYING_DISTANCE) {
-								buyBase = false;
-							}
-						}
-					}
-					if (buyBase) {
-						purchases.put(ship.getId(), PurchaseTypes.BASE);
-						bought_base = true;
-						System.out.println("Buying a base!!");
-						break;
-					}
-				}
-			}		
-		} 
-		
-		// Ship Purchase
-		if (bought_base == false && purchaseCosts.canAfford(PurchaseTypes.SHIP, resourcesAvailable)) {
-			for (AbstractActionableObject actionableObject : actionableObjects) {
-				// TODO: What if we chose a base to spawn our ship at for a reason, instead of the first available one?
-				if (actionableObject instanceof Base) {
-					Base base = (Base) actionableObject;
-					purchases.put(base.getId(), PurchaseTypes.SHIP);
-					break;
-				}
-			}
-		}
-		return purchases;
-	}
-
-	/**
-	 * Initialize the population by either reading it from the file or making a new one from scratch
-	 * 
-	 * @param space
-	 */
-	@Override
-	public void initialize(Toroidal2DPhysics space) {
-		XStream xstream = new XStream();
-		xstream.alias("ExampleGAPopulation", AtkiGAPopulation.class);
-		graph = AStarGraph.getInstance(space.getHeight(), space.getWidth(), debug);
-
-		// try to load the population from the existing saved file.  If that failes, start from scratch
-		try { 
-			population = (AtkiGAPopulation) xstream.fromXML(new File(getKnowledgeFile()));
-		} catch (XStreamException e) {
-			// if you get an error, handle it other than a null pointer because
-			// the error will happen the first time you run
-			System.out.println("No existing population found - starting a new one from scratch");
-			population = new AtkiGAPopulation(populationSize, graph, random);
-		}
-		currentPolicy = population.getFirstMember();
-	}
-
-	@Override
-	public void shutDown(Toroidal2DPhysics space) {
-		XStream xstream = new XStream();
-		xstream.alias("ExampleGAPopulation", AtkiGAPopulation.class);
-
-		try { 
-			// if you want to compress the file, change FileOuputStream to a GZIPOutputStream
-			xstream.toXML(population, new FileOutputStream(new File(getKnowledgeFile())));
-		} catch (XStreamException e) {
-			// if you get an error, handle it somehow as it means your knowledge didn't save
-			System.out.println("Can't save knowledge file in shutdown ");
-			System.out.println(e.getMessage());
-		} catch (FileNotFoundException e) {
-			// file is missing so start from scratch (but tell the user)
-			System.out.println("Can't save knowledge file in shutdown ");
-			System.out.println(e.getMessage());
-		}
-	}
-
-	@Override
-	public Set<SpacewarGraphics> getGraphics() {
-		// If graphics are to be drawn, return them.
-		if(showMyGraphics)
-		{
-			HashSet<SpacewarGraphics> graphics = new HashSet<SpacewarGraphics>();
-			graphics.addAll(graphicsToAdd);
-			graphicsToAdd.clear();
-			return graphics;
-		}
-		return null;
-	}
-	
-	
 
 }

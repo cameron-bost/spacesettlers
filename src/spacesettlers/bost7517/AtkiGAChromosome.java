@@ -184,14 +184,14 @@ public class AtkiGAChromosome {
 				}
 			}
 			if (policyNumber == 3) {
-				if (currentState.nearestMineableAsteroid != null) {
+				if (currentState.getNearestMineableAsteroid() != null) {
 					System.out.println("<DEBUG> - calling policy inside of policy 3");
-					asteroidToShipMap.put(currentState.nearestMineableAsteroid.getId(), myShip);
+					asteroidToShipMap.put(currentState.getNearestMineableAsteroid().getId(), myShip);
 					// Re-plans every 10 steps.
 					if (timeSincePlan >= 10) {
 						current = null;
 						timeSincePlan = 0;
-						currentPath = graph.getPathTo(myShip, currentState.nearestMineableAsteroid, space);
+						currentPath = graph.getPathTo(myShip, currentState.getNearestMineableAsteroid(), space);
 						currentSearchTree = graph.getSearchTree();
 						pointsToVisit = new LinkedList<Position>(currentPath.getPositions());
 					} else {
@@ -213,7 +213,7 @@ public class AtkiGAChromosome {
 							Position newPosition = new Position(pointsToVisit.getFirst().getX(),pointsToVisit.getFirst().getY());
 							//Create the action to move to the A* position.
 							//newAction = new BDSMMoveAction(space, myShip.getPosition(), newPosition, currentState.nearestMineableAsteroid);
-							policy.put(currentState, new BDSMMoveAction(space, myShip.getPosition(), newPosition, currentState.nearestMineableAsteroid));
+							policy.put(currentState, new BDSMMoveAction(space, myShip.getPosition(), newPosition, currentState.getNearestMineableAsteroid()));
 							//This will displayed graphics if true.
 							/*if(showMyGraphics)
 							{
@@ -230,8 +230,8 @@ public class AtkiGAChromosome {
 
 					policy.put(currentState,
 							new BDSMMoveToObjectAction(space, myShip.getPosition(),
-									currentState.nearestMineableAsteroid,
-									currentState.nearestMineableAsteroid.getPosition().getTranslationalVelocity()));
+									currentState.getNearestMineableAsteroid(),
+									currentState.getNearestMineableAsteroid().getPosition().getTranslationalVelocity()));
 				}
 			}
 		}

@@ -34,16 +34,34 @@ import spacesettlers.utilities.Position;
 import spacesettlers.utilities.Vector2D;
 
 /**
- * Demonstrates one idea on implementing Genetic Algorithms/Evolutionary Computation within the space settlers framework.
+ * Heavily inspired by clients.examples.ExampleGAClient, written by Amy McGovern.
  * 
- * @author amy
+ * This client is a learning agent capable of maintaining functionalities from 
+ * previous versions while adding the ability to optimize some specific numeric
+ * values (genes) via a genetic algorithm.
+ * 
+ * @author Joshua Atkinson, Cameron Bost
+ * @version 0.3
  *
  */
 
 public class AtkiGAClient extends TeamClient {
-	
+	/**
+	 * Flag for developer debug print statements
+	 */
+	private boolean debug = false;
+	/**
+	 * Flag indicating whether to show graphics.
+	 */
 	private boolean showMyGraphics = true;
+	/**
+	 * Set of graphics to be displayed. Generated during each timestep.
+	 */
 	private ArrayList<SpacewarGraphics> graphicsToAdd;
+	/**
+	 * Radius of graphic used for blocked grids
+	 */
+	static final int BLOCKED_GRID_GRAPHIC_RADIUS = 15;
 	
 	/**
 	 * The current policy for the team
@@ -70,77 +88,95 @@ public class AtkiGAClient extends TeamClient {
 	 */
 	private int steps = 0;
 	/**
-	 * AStar
+	 * AStar graph object
 	 */
 	private AStarGraph graph = null;
+	/**
+	 * Local variable for AStar graph grid size (pixels)
+	 */
 	static final int ASTAR_GRID_SIZE = AStarGraph.GRID_SIZE;
 	
 	/**
-	 * Final Variables
+	 * Constants
 	 */
-	final double LOW_ENERGY_THRESHOLD = 4750; // #P1 - Lowered 2000 -> 1500
-	final double RESOURCE_THRESHOLD = 2000;   // #P1 - Raised 500 -> 2000
-	final double BASE_BUYING_DISTANCE = 400; // #P1 - raised 200 -> 350 
+	static final double LOW_ENERGY_THRESHOLD = 4750; // #P1 - Lowered 2000 -> 1500
+	static final double RESOURCE_THRESHOLD = 2000;   // #P1 - Raised 500 -> 2000
+	static final double BASE_BUYING_DISTANCE = 400; // #P1 - raised 200 -> 350
 	
 	@Override
 	public Map<UUID, AbstractAction> getMovementStart(Toroidal2DPhysics space,
 			Set<AbstractActionableObject> actionableObjects) {
-		// make a hash map of actions to return
+		// Return value, contains an action for every actionable object associated with this team.
 		HashMap<UUID, AbstractAction> actions = new HashMap<UUID, AbstractAction>();
 
-		// loop through each ship and send it the current policy from the chromosome.  If the chromosome
-		// hasn't seen a state before, it will pick an abstract action (you should make more interesting actions!
-		// this agent chooses only between doNothing and moveToNearestAsteroid)
+		// For each object associated with this team (ship(s), base(s))
 		for (AbstractObject actionable :  actionableObjects) {
+			// Decide action for ship
 			if (actionable instanceof Ship) {
 				Ship ship = (Ship) actionable;
 				
-				if(showMyGraphics)
-				{
-					showGraphics(space);
-				}
-
+				// Default action is ship's current action
 				AbstractAction action = ship.getCurrentAction();
 				
-				//Will choose policy 1. to collect energy shield
+				// Determine policy number (default 0 - no policy)
+				int policyNumber = 0;
 				
-				if ((ship.getEnergy() < LOW_ENERGY_THRESHOLD)) 
-				{
-					AtkiGAState currentState = new AtkiGAState(space, ship);	
-					action = currentPolicy.getCurrentAction(space, ship, currentState, 1);				
+				// Policy 1: if energy is low, target energy beacon
+				if ((ship.getEnergy() < LOW_ENERGY_THRESHOLD)) {
+					policyNumber = 1;			
 				}
 				
-				//Will choose policy 2. to return to base.
-				
-				else if (ship.getResources().getTotal() > RESOURCE_THRESHOLD) 
-				{
-					AtkiGAState currentState = new AtkiGAState(space, ship);	
-					action = currentPolicy.getCurrentAction(space, ship, currentState, 2);	
+				// Policy 2: if on-board resources are high, target base 
+				else if (ship.getResources().getTotal() > RESOURCE_THRESHOLD) {
+					policyNumber = 2;	
 				}
 				
-				//Will choose policy 3. to collect NEAREST resource.
+				// Policy 3: if current action is done (or null), target nearest asteroid
+				else if (ship.getCurrentAction() == null || ship.getCurrentAction().isMovementFinished(space)) {
+					policyNumber = 3;
+				}
 				
-				else if (ship.getCurrentAction() == null || ship.getCurrentAction().isMovementFinished(space))
-				{		
-					AtkiGAState currentState = new AtkiGAState(space, ship);			
-					action = currentPolicy.getCurrentAction(space, ship, currentState, 3);
-				} 		
-
+				// If a policy was selected, get corresponding action
+				if(policyNumber != 0) {
+					AtkiGAState currentState = new AtkiGAState(space, ship);		
+					action = currentPolicy.getCurrentAction(space, ship, currentState, policyNumber);
+				}
+				
+				// Commit action for this ship.
 				actions.put(ship.getId(), action);
 			} 
-			/*else {
-				// it is a base.  Heuristically decide when to use the shield (TODO)
+			else {
+				// TODO: object is Base, need logic here
 				actions.put(actionable.getId(), new DoNothingAction());
-			}*/
+			}
 		}
-		System.out.println("actions are " + actions);
+		
+		// Show graphics (if indicated)
+		if(showMyGraphics) {
+			showGraphics(space);
+		}
+		
 		return actions;
-
 	}
 	
-	void showGraphics(Toroidal2DPhysics space) {
+	/**
+	 * Shows graphics for this client.
+	 * 
+	 * @param space physics model
+	 */
+	private void showGraphics(Toroidal2DPhysics space) {
 		graphicsToAdd = new ArrayList<SpacewarGraphics>();
-		
+		drawGrid(space);
+	    drawSearchTree(space);
+	    drawBlockedGrids();
+	}
+	
+	/**
+	 * Draws grid used by A* search algorithm.
+	 * 
+	 * @param space physics model
+	 */
+	private void drawGrid(Toroidal2DPhysics space) {
 		//create columns
 		Position heightBottom = new Position(0,0);
 		Position heightTop = new Position(0,space.getHeight());
@@ -167,12 +203,14 @@ public class AtkiGAClient extends TeamClient {
 			t.setLineColor(Color.gray);
 			graphicsToAdd.add(t);
 	    }
-	    
-	    drawSearchTree(space);
-	    drawBlockedGrids();
 	}
-	
-	void drawSearchTree(Toroidal2DPhysics space) {
+
+	/**
+	 * Draws search tree from most recent A* search.
+	 * 
+	 * @param space physics model
+	 */
+	private void drawSearchTree(Toroidal2DPhysics space) {
 		LinkedList<AStarPath> currentSearchTree = currentPolicy.getCurrentSearchTree();
 		AStarPath currentPath = currentPolicy.getCurrentPath();
 		if (currentSearchTree != null) {
@@ -213,10 +251,13 @@ public class AtkiGAClient extends TeamClient {
 		}
 	}
 	
+	/**
+	 * Draws all grids in A* graph that are blocked by obstacles.
+	 */
 	private void drawBlockedGrids() {
 		if(showMyGraphics) {
 			for(Vertex v: graph.getBlockedVertices()) {
-				SpacewarGraphics g = new TargetGraphics(15, graph.getCentralCoordinate(v));
+				SpacewarGraphics g = new TargetGraphics(BLOCKED_GRID_GRAPHIC_RADIUS, graph.getCentralCoordinate(v));
 				graphicsToAdd.add(g);
 			}
 		}
@@ -224,6 +265,9 @@ public class AtkiGAClient extends TeamClient {
 
 	@Override
 	public void getMovementEnd(Toroidal2DPhysics space, Set<AbstractActionableObject> actionableObjects) {
+		/**
+		 * Note: Method unchanged from ExampleGAClient
+		 */
 		// increment the step counter
 		steps++;
 
@@ -250,25 +294,23 @@ public class AtkiGAClient extends TeamClient {
 	@Override
 	public Map<UUID, SpaceSettlersPowerupEnum> getPowerups(Toroidal2DPhysics space,
 			Set<AbstractActionableObject> actionableObjects) {
-		// TODO Auto-generated method stub
+		// TODO Currently unused
 		return null;
 	}
 
 	@Override
-	/**
-	 * If there is enough resourcesAvailable, buy a base.  Place it by finding a ship that is sufficiently
-	 * far away from the existing bases
-	 */
 	public Map<UUID, PurchaseTypes> getTeamPurchases(Toroidal2DPhysics space,
 			Set<AbstractActionableObject> actionableObjects, 
 			ResourcePile resourcesAvailable, 
 			PurchaseCosts purchaseCosts) {
-
+		/**
+		 * If there is enough resourcesAvailable, buy a base.  Place it by finding a ship that is sufficiently
+		 * far away from the existing bases.
+		 */
 		HashMap<UUID, PurchaseTypes> purchases = new HashMap<UUID, PurchaseTypes>();
 		
 		// TODO: Determine if base is impossible to purchase, add heuristic to purchase anyway
 		boolean bought_base = false;
-		
 		if (purchaseCosts.canAfford(PurchaseTypes.BASE, resourcesAvailable)) {
 			for (AbstractActionableObject actionableObject : actionableObjects) {
 				if (actionableObject instanceof Ship) {
@@ -318,7 +360,7 @@ public class AtkiGAClient extends TeamClient {
 	public void initialize(Toroidal2DPhysics space) {
 		XStream xstream = new XStream();
 		xstream.alias("ExampleGAPopulation", AtkiGAPopulation.class);
-		graph = AStarGraph.getInstance(space.getHeight(), space.getWidth(), true);
+		graph = AStarGraph.getInstance(space.getHeight(), space.getWidth(), debug);
 
 		// try to load the population from the existing saved file.  If that failes, start from scratch
 		try { 
@@ -353,6 +395,7 @@ public class AtkiGAClient extends TeamClient {
 
 	@Override
 	public Set<SpacewarGraphics> getGraphics() {
+		// If graphics are to be drawn, return them.
 		if(showMyGraphics)
 		{
 			HashSet<SpacewarGraphics> graphics = new HashSet<SpacewarGraphics>();

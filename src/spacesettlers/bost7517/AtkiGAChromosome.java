@@ -1,13 +1,10 @@
 package spacesettlers.bost7517;
 
-import java.awt.Color;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.UUID;
 
 import spacesettlers.actions.AbstractAction;
-import spacesettlers.graphics.LineGraphics;
 import spacesettlers.objects.Ship;
 import spacesettlers.simulator.Toroidal2DPhysics;
 import spacesettlers.utilities.Position;
@@ -57,7 +54,6 @@ public class AtkiGAChromosome {
 	 */
 	public AbstractAction getCurrentAction(Toroidal2DPhysics space, Ship myShip, AtkiGAState currentState,
 			int policyNumber) {
-		drawSearchTree(space);
 		if (!policy.containsKey(currentState)) {
 			/*
 			 * ################### ## Original code ## ###################
@@ -111,16 +107,6 @@ public class AtkiGAChromosome {
 								Position newPosition = new Position(pointsToVisit.getFirst().getX(),
 										pointsToVisit.getFirst().getY());
 								policy.put(currentState, new BDSMMoveAction(space, myShip.getPosition(), newPosition));
-								//Will display graphics if set to true.
-								/*
-								if(showMyGraphics)
-								{
-									graphicsToAdd.add(new StarGraphics(3, Color.RED, newPosition));
-									LineGraphics line = new LineGraphics(currentPosition, newPosition, 
-											space.findShortestDistanceVector(currentPosition, newPosition));
-									line.setLineColor(Color.RED);
-									graphicsToAdd.add(line);
-								}*/
 									
 								pointsToVisit.poll();//pops the top
 							}
@@ -157,18 +143,6 @@ public class AtkiGAChromosome {
 						Position newPosition = new Position(pointsToVisit.getFirst().getX(),
 								pointsToVisit.getFirst().getY());
 						policy.put(currentState, new BDSMMoveAction(space, myShip.getPosition(), newPosition));
-						// This will display graphics if they are enabled.
-						/*
-						 * if(showMyGraphics)
-						{
-						//LINE!!!
-							graphicsToAdd.add(new StarGraphics(3, Color.RED, newPosition));
-							LineGraphics line = new LineGraphics(currentPosition, newPosition, 
-									space.findShortestDistanceVector(currentPosition, newPosition));
-							line.setLineColor(Color.RED);
-							graphicsToAdd.add(line);
-						}
-						*/
 						pointsToVisit.poll();//pops the top
 						aimingForBase.put(myShip.getId(), true);
 					}
@@ -203,7 +177,6 @@ public class AtkiGAChromosome {
 							return current;
 						}
 					}
-					System.out.println("HERE");
 					//Will create actions for A* points.
 					if (pointsToVisit != null)
 					{
@@ -214,15 +187,6 @@ public class AtkiGAChromosome {
 							//Create the action to move to the A* position.
 							//newAction = new BDSMMoveAction(space, myShip.getPosition(), newPosition, currentState.nearestMineableAsteroid);
 							policy.put(currentState, new BDSMMoveAction(space, myShip.getPosition(), newPosition, currentState.getNearestMineableAsteroid()));
-							//This will displayed graphics if true.
-							/*if(showMyGraphics)
-							{
-								graphicsToAdd.add(new StarGraphics(3, Color.RED, newPosition));
-								LineGraphics line = new LineGraphics(currentPosition, newPosition, 
-										space.findShortestDistanceVector(currentPosition, newPosition));
-								line.setLineColor(Color.RED);
-								graphicsToAdd.add(line);
-							}*/
 							
 							pointsToVisit.poll();//pops the top
 						}
@@ -237,44 +201,13 @@ public class AtkiGAChromosome {
 		}
 		return policy.get(currentState);
 	}
+	
+	public LinkedList<AStarPath> getCurrentSearchTree(){
+		return currentSearchTree;
+	}
 
-	void drawSearchTree(Toroidal2DPhysics space) {
-		if (currentSearchTree != null) {
-			HashSet<LineGraphics> drawnPositions = new HashSet<>();
-			for (AStarPath path : currentSearchTree) {
-				Position prevPosition = null;
-				for (Position p : path.getPositions()) {
-					if (prevPosition != null) {
-						LineGraphics nextLine = new LineGraphics(prevPosition, p,
-								space.findShortestDistanceVector(prevPosition, p));
-						drawnPositions.add(nextLine);
-					}
-					prevPosition = p;
-				}
-			}
-			for (LineGraphics g : drawnPositions) {
-				// graphicsToAdd.add(g);
-			}
-		}
-
-		if (currentPath != null) {
-			HashSet<LineGraphics> drawnPositions = new HashSet<>();
-
-			Position prevPosition = null;
-			for (Position p : currentPath.getPositions()) {
-				if (prevPosition != null) {
-					LineGraphics nextLine = new LineGraphics(prevPosition, p,
-							space.findShortestDistanceVector(prevPosition, p));
-					drawnPositions.add(nextLine);
-				}
-				prevPosition = p;
-			}
-			for (LineGraphics g : drawnPositions) {
-				g.setLineColor(Color.GREEN);
-				// graphicsToAdd.add(g);
-			}
-
-		}
+	public AStarPath getCurrentPath() {
+		return currentPath;
 	}
 
 	/**

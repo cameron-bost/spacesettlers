@@ -1,9 +1,12 @@
 package spacesettlers.bost7517;
 
+import java.awt.Color;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Set;
@@ -17,7 +20,9 @@ import spacesettlers.actions.DoNothingAction;
 import spacesettlers.actions.PurchaseCosts;
 import spacesettlers.actions.PurchaseTypes;
 import spacesettlers.clients.TeamClient;
+import spacesettlers.graphics.LineGraphics;
 import spacesettlers.graphics.SpacewarGraphics;
+import spacesettlers.graphics.TargetGraphics;
 import spacesettlers.objects.AbstractActionableObject;
 import spacesettlers.objects.AbstractObject;
 import spacesettlers.objects.Base;
@@ -26,6 +31,7 @@ import spacesettlers.objects.powerups.SpaceSettlersPowerupEnum;
 import spacesettlers.objects.resources.ResourcePile;
 import spacesettlers.simulator.Toroidal2DPhysics;
 import spacesettlers.utilities.Position;
+import spacesettlers.utilities.Vector2D;
 
 /**
  * Demonstrates one idea on implementing Genetic Algorithms/Evolutionary Computation within the space settlers framework.
@@ -35,6 +41,10 @@ import spacesettlers.utilities.Position;
  */
 
 public class AtkiGAClient extends TeamClient {
+	
+	private boolean showMyGraphics = true;
+	private ArrayList<SpacewarGraphics> graphicsToAdd;
+	
 	/**
 	 * The current policy for the team
 	 */
@@ -62,10 +72,8 @@ public class AtkiGAClient extends TeamClient {
 	/**
 	 * AStar
 	 */
-	private LinkedList<Position> pointsToVisit;
-	private AStarPath currentPath = null;
-	private LinkedList<AStarPath> currentSearchTree;
 	private AStarGraph graph = null;
+	static final int ASTAR_GRID_SIZE = AStarGraph.GRID_SIZE;
 	
 	/**
 	 * Final Variables
@@ -86,8 +94,13 @@ public class AtkiGAClient extends TeamClient {
 		for (AbstractObject actionable :  actionableObjects) {
 			if (actionable instanceof Ship) {
 				Ship ship = (Ship) actionable;
+				
+				if(showMyGraphics)
+				{
+					showGraphics(space);
+				}
 
-				AbstractAction action = null;
+				AbstractAction action = ship.getCurrentAction();
 				
 				//Will choose policy 1. to collect energy shield
 				
@@ -99,16 +112,15 @@ public class AtkiGAClient extends TeamClient {
 				
 				//Will choose policy 2. to return to base.
 				
-				
-				if (ship.getResources().getTotal() > RESOURCE_THRESHOLD) 
+				else if (ship.getResources().getTotal() > RESOURCE_THRESHOLD) 
 				{
 					AtkiGAState currentState = new AtkiGAState(space, ship);	
 					action = currentPolicy.getCurrentAction(space, ship, currentState, 2);	
-					
 				}
 				
 				//Will choose policy 3. to collect NEAREST resource.
-				if (ship.getCurrentAction() == null || ship.getCurrentAction().isMovementFinished(space))
+				
+				else if (ship.getCurrentAction() == null || ship.getCurrentAction().isMovementFinished(space))
 				{		
 					AtkiGAState currentState = new AtkiGAState(space, ship);			
 					action = currentPolicy.getCurrentAction(space, ship, currentState, 3);
@@ -124,6 +136,90 @@ public class AtkiGAClient extends TeamClient {
 		System.out.println("actions are " + actions);
 		return actions;
 
+	}
+	
+	void showGraphics(Toroidal2DPhysics space) {
+		graphicsToAdd = new ArrayList<SpacewarGraphics>();
+		
+		//create columns
+		Position heightBottom = new Position(0,0);
+		Position heightTop = new Position(0,space.getHeight());
+			
+	    for (int i = ASTAR_GRID_SIZE; i <= space.getWidth(); i = i + ASTAR_GRID_SIZE)
+	    {
+	    	Vector2D te = new Vector2D(0,space.getHeight());
+	    	LineGraphics t= new LineGraphics(heightBottom,heightTop,te);
+			heightBottom = new Position(i,0);
+			heightTop = new Position(i,space.getHeight());
+			t.setLineColor(Color.gray);
+			graphicsToAdd.add(t);
+	    }
+	    
+		heightBottom = new Position(0,0);
+		heightTop = new Position(space.getWidth(),0);
+	    
+	    for (int i = ASTAR_GRID_SIZE; i <= space.getHeight(); i = i + ASTAR_GRID_SIZE)
+	    {
+	    	Vector2D te = new Vector2D(space.getWidth(),0);
+	    	LineGraphics t= new LineGraphics(heightBottom,heightTop,te);
+			heightBottom = new Position(0,i);
+			heightTop = new Position(space.getWidth(),i);
+			t.setLineColor(Color.gray);
+			graphicsToAdd.add(t);
+	    }
+	    
+	    drawSearchTree(space);
+	    drawBlockedGrids();
+	}
+	
+	void drawSearchTree(Toroidal2DPhysics space) {
+		LinkedList<AStarPath> currentSearchTree = currentPolicy.getCurrentSearchTree();
+		AStarPath currentPath = currentPolicy.getCurrentPath();
+		if (currentSearchTree != null) {
+			HashSet<LineGraphics> drawnPositions = new HashSet<>();
+			for (AStarPath path : currentSearchTree) {
+				Position prevPosition = null;
+				for (Position p : path.getPositions()) {
+					if (prevPosition != null) {
+						LineGraphics nextLine = new LineGraphics(prevPosition, p,
+								space.findShortestDistanceVector(prevPosition, p));
+						drawnPositions.add(nextLine);
+					}
+					prevPosition = p;
+				}
+			}
+			for (LineGraphics g : drawnPositions) {
+				 graphicsToAdd.add(g);
+			}
+		}
+
+		if (currentPath != null) {
+			HashSet<LineGraphics> drawnPositions = new HashSet<>();
+
+			Position prevPosition = null;
+			for (Position p : currentPath.getPositions()) {
+				if (prevPosition != null) {
+					LineGraphics nextLine = new LineGraphics(prevPosition, p,
+							space.findShortestDistanceVector(prevPosition, p));
+					drawnPositions.add(nextLine);
+				}
+				prevPosition = p;
+			}
+			for (LineGraphics g : drawnPositions) {
+				g.setLineColor(Color.GREEN);
+				// graphicsToAdd.add(g);
+			}
+
+		}
+	}
+	
+	private void drawBlockedGrids() {
+		if(showMyGraphics) {
+			for(Vertex v: graph.getBlockedVertices()) {
+				SpacewarGraphics g = new TargetGraphics(15, graph.getCentralCoordinate(v));
+				graphicsToAdd.add(g);
+			}
+		}
 	}
 
 	@Override
@@ -257,7 +353,13 @@ public class AtkiGAClient extends TeamClient {
 
 	@Override
 	public Set<SpacewarGraphics> getGraphics() {
-		// TODO Auto-generated method stub
+		if(showMyGraphics)
+		{
+			HashSet<SpacewarGraphics> graphics = new HashSet<SpacewarGraphics>();
+			graphics.addAll(graphicsToAdd);
+			graphicsToAdd.clear();
+			return graphics;
+		}
 		return null;
 	}
 	

@@ -231,7 +231,7 @@ public class AtkiGAClient extends TeamClient {
 			// if you get an error, handle it other than a null pointer because
 			// the error will happen the first time you run
 			System.out.println("No existing population found - starting a new one from scratch");
-			population = new AtkiGAPopulation(populationSize, graph);
+			population = new AtkiGAPopulation(populationSize, graph, random);
 		}
 		currentPolicy = population.getFirstMember();
 	}

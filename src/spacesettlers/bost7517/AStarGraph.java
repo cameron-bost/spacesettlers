@@ -17,10 +17,31 @@ import spacesettlers.utilities.Position;
  * Represents a gridded graph of the SpaceSettlersSimulator environment 
  * used for AStar path finding.
  * 
+ * V0.3 - Converted to singleton.
+ * 
  * @author Cameron Bost
- * @version 0.2
+ * @version 0.3
  */
 public class AStarGraph {
+	
+	/**Singleton instance*/
+	private static AStarGraph _graph = null;
+	
+	/**
+	 * Retrieves instance of graph class. If instance has not been 
+	 * initialized, parameter values are used to create it.
+	 * 
+	 * @param windowHeight Height of window
+	 * @param windowWidth Width of window
+	 * @param _debug Debug flag
+	 * @return Singleton instance of AStarGraph
+	 */
+	public static AStarGraph getInstance(int windowHeight, int windowWidth, boolean _debug) {
+		if(_graph == null) {
+			_graph = new AStarGraph(windowHeight, windowWidth, _debug);
+		}
+		return _graph;
+	}
 	
 	/**Vertices represented as 2D grid*/
 	private Vertex[][] vMtx;
@@ -48,7 +69,7 @@ public class AStarGraph {
 	 * @param windowWidth width of simulated environment
 	 * @param _debug indicates debug status
 	 */
-	public AStarGraph(int windowHeight, int windowWidth, boolean _debug){
+	private AStarGraph(int windowHeight, int windowWidth, boolean _debug){
 		mtxCols = windowWidth / GRID_SIZE;
 		mtxRows = windowHeight / GRID_SIZE;
 		debug = _debug;

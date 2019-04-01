@@ -9,19 +9,17 @@ import spacesettlers.objects.Ship;
 import spacesettlers.simulator.Toroidal2DPhysics;
 
 /**
- * Example state representation for a GA agent.  Note this would need to be significantly 
- * modified/augmented to work in the full case (it just looks at one aspect of the 
- * information available to it).  Note also that this representation ignores which ship
- * it is on the team and just looks for the nearest asteroid.
+ * Heavily inspired by clients.examples.ExampleGAState.
  *  
- * @author amy
+ * @author Joshua Atkinson, Cameron Bost
+ * @version 0.3
  *
  */
 public class AtkiGAState {
-	double distanceToNearestMineableAsteroid;
-	Asteroid nearestMineableAsteroid;
-	AbstractObject energyTarget;
-	Base base;
+	private double distanceToNearestMineableAsteroid;
+	private Asteroid nearestMineableAsteroid;
+	private AbstractObject energyTarget;
+	private Base base;
 	
 	public AtkiGAState(Toroidal2DPhysics space, Ship myShip) 
 	{
@@ -31,8 +29,8 @@ public class AtkiGAState {
 	/**
 	 * Update the distance to the nearest mineable asteroid,energy target
 	 * 
-	 * @param space
-	 * @param myShip
+	 * @param space Physics model for game.
+	 * @param myShip Ship of concern.
 	 */
 	public void updateState(Toroidal2DPhysics space, Ship myShip) {
 		Set<Asteroid> asteroids = space.getAsteroids();

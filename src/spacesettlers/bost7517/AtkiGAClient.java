@@ -65,7 +65,7 @@ public class AtkiGAClient extends TeamClient {
 	private LinkedList<Position> pointsToVisit;
 	private AStarPath currentPath = null;
 	private LinkedList<AStarPath> currentSearchTree;
-	private spacesettlers.bost7517.AStarGraph graph;
+	private AStarGraph graph = null;
 	
 	/**
 	 * Final Variables
@@ -221,6 +221,7 @@ public class AtkiGAClient extends TeamClient {
 	public void initialize(Toroidal2DPhysics space) {
 		XStream xstream = new XStream();
 		xstream.alias("ExampleGAPopulation", AtkiGAPopulation.class);
+		graph = AStarGraph.getInstance(space.getHeight(), space.getWidth(), true);
 
 		// try to load the population from the existing saved file.  If that failes, start from scratch
 		try { 
@@ -229,7 +230,7 @@ public class AtkiGAClient extends TeamClient {
 			// if you get an error, handle it other than a null pointer because
 			// the error will happen the first time you run
 			System.out.println("No existing population found - starting a new one from scratch");
-			population = new AtkiGAPopulation(populationSize);
+			population = new AtkiGAPopulation(populationSize, graph, random);
 		}
 		currentPolicy = population.getFirstMember();
 	}

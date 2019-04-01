@@ -358,7 +358,7 @@ public class BDSM_AStarTestAgent extends TeamClient {
 	 */
 	@Override
 	public void initialize(Toroidal2DPhysics space) {
-		graph = new AStarGraph(space.getHeight(), space.getWidth(), true);
+		graph = AStarGraph.getInstance(space.getHeight(), space.getWidth(), true);
 		asteroidToShipMap = new HashMap<UUID, Ship>();
 		aimingForBase = new HashMap<UUID, Boolean>();
 		justHitBase = new HashMap<UUID, Boolean>();

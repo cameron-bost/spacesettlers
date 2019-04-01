@@ -121,7 +121,6 @@ public class AtkiGAClient extends TeamClient {
 				actions.put(actionable.getId(), new DoNothingAction());
 			}*/
 		}
-		System.out.println("actions are " + actions);
 		return actions;
 
 	}

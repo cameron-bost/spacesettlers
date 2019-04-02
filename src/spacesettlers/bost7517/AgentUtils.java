@@ -15,17 +15,33 @@ import spacesettlers.utilities.Vector2D;
 
 /**
  * Contains utility methods used by multiple agents, to encourage code reuse
- * @author Cameron Bost, Josh Atkinson
- * @version 0.1
+ * 
+ * @author Cameron Bost
+ * @version 0.3
  */
 public class AgentUtils {
 	
-	public static final boolean debug = false;
+	static final boolean DEBUG = false;
 	
-	public static final double MAX_VELOCITY = Toroidal2DPhysics.MAX_TRANSLATIONAL_VELOCITY;
+	static final boolean SHOW_GRAPHICS = false;
 	
+	static final double MAX_VELOCITY = Toroidal2DPhysics.MAX_TRANSLATIONAL_VELOCITY;
+	
+	/**
+	 * A* constants
+	 */
+	static final int PLAN_INTERVAL = 10;
+	
+	/**
+	 * Constants used in policy
+	 */
+	static final double LOW_ENERGY_THRESHOLD = 2750;
+	static final double RESOURCE_THRESHOLD = 2000;
+	static final double BASE_BUYING_DISTANCE = 400;
 
-	/**Distance at which a projection is considered targeting*/
+	/**
+	 * Distance at which a projection is considered targeting
+	 */
 	public static final double MIN_DISTANCE_PROJECTION_SAFETY = 20;
 	
 	/**
@@ -44,7 +60,7 @@ public class AgentUtils {
 		if(minBase != null) {
 			minBaseDist = space.findShortestDistance(ship.getPosition(), minBase.getPosition());
 		}
-		if(debug) {
+		if(DEBUG) {
 			System.out.println("Min Base: "+ (minBase == null ? "null" : minBase.getId()+", Dist: "+minBaseDist));
 		}
 		
@@ -53,7 +69,7 @@ public class AgentUtils {
 		if(minCore != null) {
 			minCoreDist = space.findShortestDistance(ship.getPosition(), minCore.getPosition());
 		}
-		if(debug) {
+		if(DEBUG) {
 			System.out.println("Min Core: "+ (minCore == null ? "null" : minCore.getId()+", Dist: "+minCoreDist));
 		}
 		
@@ -62,7 +78,7 @@ public class AgentUtils {
 		if(minBeacon != null) {
 			minBeaconDist = space.findShortestDistance(ship.getPosition(), minBeacon.getPosition());
 		}
-		if(debug) {
+		if(DEBUG) {
 			System.out.println("Min Beacon: "+ (minBeacon == null ? "null" : minBeacon.getId()+", Dist: "+minBeaconDist));
 		}
 		
@@ -77,7 +93,7 @@ public class AgentUtils {
 		}
 		
 		if(bestObject != null) {
-			if(debug) {
+			if(DEBUG) {
 				System.out.println("Targetting energy source " + bestObject.getId());
 			}
 		}
@@ -197,7 +213,7 @@ public class AgentUtils {
 						double minShipTime = Math.min(tXS, tYS);
 						if(minProjTime < minShipTime) {
 							// Abandon
-							if(debug) {
+							if(DEBUG) {
 								System.out.println("<Opponent Targetting Inference> - "+enemy.getTeamName()+": "+minProjDistance);
 							}
 							return true;

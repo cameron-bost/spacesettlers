@@ -1,9 +1,12 @@
 package spacesettlers.bost7517;
 
+import java.awt.Color;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Set;
@@ -17,7 +20,9 @@ import spacesettlers.actions.DoNothingAction;
 import spacesettlers.actions.PurchaseCosts;
 import spacesettlers.actions.PurchaseTypes;
 import spacesettlers.clients.TeamClient;
+import spacesettlers.graphics.LineGraphics;
 import spacesettlers.graphics.SpacewarGraphics;
+import spacesettlers.graphics.TargetGraphics;
 import spacesettlers.objects.AbstractActionableObject;
 import spacesettlers.objects.AbstractObject;
 import spacesettlers.objects.Base;
@@ -26,15 +31,30 @@ import spacesettlers.objects.powerups.SpaceSettlersPowerupEnum;
 import spacesettlers.objects.resources.ResourcePile;
 import spacesettlers.simulator.Toroidal2DPhysics;
 import spacesettlers.utilities.Position;
+import spacesettlers.utilities.Vector2D;
 
 /**
- * Demonstrates one idea on implementing Genetic Algorithms/Evolutionary Computation within the space settlers framework.
+ * Heavily inspired by clients.examples.ExampleGAClient, written by Amy McGovern.
  * 
- * @author amy
+ * This client is a learning agent capable of maintaining functionalities from 
+ * previous versions while adding the ability to optimize some specific numeric
+ * values (genes) via a genetic algorithm.
+ * 
+ * @author Joshua Atkinson, Cameron Bost
+ * @version 0.3
  *
  */
 
 public class AtkiGAClient extends TeamClient {
+	/**
+	 * Set of graphics to be displayed. Generated during each timestep.
+	 */
+	private ArrayList<SpacewarGraphics> graphicsToAdd;
+	/**
+	 * Radius of graphic used for blocked grids
+	 */
+	static final int BLOCKED_GRID_GRAPHIC_RADIUS = 15;
+	
 	/**
 	 * The current policy for the team
 	 */
@@ -48,7 +68,7 @@ public class AtkiGAClient extends TeamClient {
 	/**
 	 * How many steps each policy is evaluated for before moving to the next one
 	 */
-	private int evaluationSteps = 2000;
+	static final int EVALUATION_STEPS = 2000;
 	
 	/**
 	 * How large of a population to evaluate
@@ -60,78 +80,83 @@ public class AtkiGAClient extends TeamClient {
 	 */
 	private int steps = 0;
 	/**
-	 * AStar
+	 * AStar graph object
 	 */
-	private LinkedList<Position> pointsToVisit;
-	private AStarPath currentPath = null;
-	private LinkedList<AStarPath> currentSearchTree;
 	private AStarGraph graph = null;
-	
 	/**
-	 * Final Variables
+	 * Local variable for AStar graph grid size (pixels)
 	 */
-	final double LOW_ENERGY_THRESHOLD = 4750; // #P1 - Lowered 2000 -> 1500
-	final double RESOURCE_THRESHOLD = 2000;   // #P1 - Raised 500 -> 2000
-	final double BASE_BUYING_DISTANCE = 400; // #P1 - raised 200 -> 350 
+	static final int ASTAR_GRID_SIZE = AStarGraph.GRID_SIZE;
 	
 	@Override
 	public Map<UUID, AbstractAction> getMovementStart(Toroidal2DPhysics space,
 			Set<AbstractActionableObject> actionableObjects) {
-		// make a hash map of actions to return
+		// Return value, contains an action for every actionable object associated with this team.
 		HashMap<UUID, AbstractAction> actions = new HashMap<UUID, AbstractAction>();
 
-		// loop through each ship and send it the current policy from the chromosome.  If the chromosome
-		// hasn't seen a state before, it will pick an abstract action (you should make more interesting actions!
-		// this agent chooses only between doNothing and moveToNearestAsteroid)
+		// For each object associated with this team (ship(s), base(s))
 		for (AbstractObject actionable :  actionableObjects) {
+			// Decide action for ship
 			if (actionable instanceof Ship) {
 				Ship ship = (Ship) actionable;
-
-				AbstractAction action = null;
 				
-				//Will choose policy 1. to collect energy shield
+				// Default action is ship's current action
+				AbstractAction action = ship.getCurrentAction();
 				
-				if ((ship.getEnergy() < LOW_ENERGY_THRESHOLD)) 
-				{
-					AtkiGAState currentState = new AtkiGAState(space, ship);	
-					action = currentPolicy.getCurrentAction(space, ship, currentState, 1);				
+				// Determine policy number (default 0 - no policy)
+				int policyNumber = 0;
+				
+				// Policy 1: if energy is low, target energy beacon
+				if ((ship.getEnergy() < AgentUtils.LOW_ENERGY_THRESHOLD)) {
+					policyNumber = 1;			
 				}
 				
-				//Will choose policy 2. to return to base.
-				
-				
-				if (ship.getResources().getTotal() > RESOURCE_THRESHOLD) 
-				{
-					AtkiGAState currentState = new AtkiGAState(space, ship);	
-					action = currentPolicy.getCurrentAction(space, ship, currentState, 2);	
-					
+				// Policy 2: if on-board resources are high, target base 
+				else if (ship.getResources().getTotal() > AgentUtils.RESOURCE_THRESHOLD) {
+					policyNumber = 2;	
 				}
 				
-				//Will choose policy 3. to collect NEAREST resource.
-				if (ship.getCurrentAction() == null || ship.getCurrentAction().isMovementFinished(space))
-				{		
-					AtkiGAState currentState = new AtkiGAState(space, ship);			
-					action = currentPolicy.getCurrentAction(space, ship, currentState, 3);
-				} 		
-
+				// Policy 3: if current action is done (or null), target nearest asteroid
+				else if (ship.getCurrentAction() == null || ship.getCurrentAction().isMovementFinished(space)) {
+					policyNumber = 3;
+				}
+				
+				// If a policy was selected, get corresponding action
+				if(policyNumber != 0) {
+					AtkiGAState currentState = new AtkiGAState(space, ship);		
+					action = currentPolicy.getCurrentAction(space, ship, currentState, policyNumber);
+				}
+				
+				// Commit action for this ship.
 				actions.put(ship.getId(), action);
 			} 
-			/*else {
-				// it is a base.  Heuristically decide when to use the shield (TODO)
+			else {
+				// TODO: object is Base, need logic here
 				actions.put(actionable.getId(), new DoNothingAction());
-			}*/
+			}
 		}
+<<<<<<< HEAD
+=======
+		
+		// Show graphics (if indicated)
+		if(AgentUtils.SHOW_GRAPHICS) {
+			showGraphics(space);
+		}
+		
+>>>>>>> 1674e9253409737357371c1d6a0a53bc87219e6a
 		return actions;
-
 	}
 
 	@Override
 	public void getMovementEnd(Toroidal2DPhysics space, Set<AbstractActionableObject> actionableObjects) {
+		/**
+		 * Note: Method unchanged from ExampleGAClient
+		 */
 		// increment the step counter
 		steps++;
 
 		// if the step counter is modulo evaluationSteps, then evaluate this member and move to the next one
-		if (steps % evaluationSteps == 0) {
+		if (steps % EVALUATION_STEPS == 0) {
 			// note that this method currently scores every policy as zero as this is part of 
 			// what the student has to do
 			population.evaluateFitnessForCurrentMember(space);
@@ -150,68 +175,6 @@ public class AtkiGAClient extends TeamClient {
 		
 	}
 
-	@Override
-	public Map<UUID, SpaceSettlersPowerupEnum> getPowerups(Toroidal2DPhysics space,
-			Set<AbstractActionableObject> actionableObjects) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	/**
-	 * If there is enough resourcesAvailable, buy a base.  Place it by finding a ship that is sufficiently
-	 * far away from the existing bases
-	 */
-	public Map<UUID, PurchaseTypes> getTeamPurchases(Toroidal2DPhysics space,
-			Set<AbstractActionableObject> actionableObjects, 
-			ResourcePile resourcesAvailable, 
-			PurchaseCosts purchaseCosts) {
-
-		HashMap<UUID, PurchaseTypes> purchases = new HashMap<UUID, PurchaseTypes>();
-		
-		// TODO: Determine if base is impossible to purchase, add heuristic to purchase anyway
-		boolean bought_base = false;
-		
-		if (purchaseCosts.canAfford(PurchaseTypes.BASE, resourcesAvailable)) {
-			for (AbstractActionableObject actionableObject : actionableObjects) {
-				if (actionableObject instanceof Ship) {
-					Ship ship = (Ship) actionableObject;
-					Set<Base> bases = space.getBases();
-
-					// how far away is this ship to a base of my team?
-					boolean buyBase = true;
-					for (Base base : bases) {
-						if (base.getTeamName().equalsIgnoreCase(getTeamName())) {
-							double distance = space.findShortestDistance(ship.getPosition(), base.getPosition());
-							if (distance < BASE_BUYING_DISTANCE) {
-								buyBase = false;
-							}
-						}
-					}
-					if (buyBase) {
-						purchases.put(ship.getId(), PurchaseTypes.BASE);
-						bought_base = true;
-						System.out.println("Buying a base!!");
-						break;
-					}
-				}
-			}		
-		} 
-		
-		// Ship Purchase
-		if (bought_base == false && purchaseCosts.canAfford(PurchaseTypes.SHIP, resourcesAvailable)) {
-			for (AbstractActionableObject actionableObject : actionableObjects) {
-				// TODO: What if we chose a base to spawn our ship at for a reason, instead of the first available one?
-				if (actionableObject instanceof Base) {
-					Base base = (Base) actionableObject;
-					purchases.put(base.getId(), PurchaseTypes.SHIP);
-					break;
-				}
-			}
-		}
-		return purchases;
-	}
-
 	/**
 	 * Initialize the population by either reading it from the file or making a new one from scratch
 	 * 
@@ -221,7 +184,7 @@ public class AtkiGAClient extends TeamClient {
 	public void initialize(Toroidal2DPhysics space) {
 		XStream xstream = new XStream();
 		xstream.alias("ExampleGAPopulation", AtkiGAPopulation.class);
-		graph = AStarGraph.getInstance(space.getHeight(), space.getWidth(), true);
+		graph = AStarGraph.getInstance(space.getHeight(), space.getWidth(), AgentUtils.DEBUG);
 
 		// try to load the population from the existing saved file.  If that failes, start from scratch
 		try { 
@@ -254,12 +217,189 @@ public class AtkiGAClient extends TeamClient {
 		}
 	}
 
+	/******************
+	 * Unused methods *
+	 ******************/
+
+	@Override
+	public Map<UUID, SpaceSettlersPowerupEnum> getPowerups(Toroidal2DPhysics space,
+			Set<AbstractActionableObject> actionableObjects) {
+		// TODO Currently unused
+		return null;
+	}
+
+	@Override
+	public Map<UUID, PurchaseTypes> getTeamPurchases(Toroidal2DPhysics space,
+			Set<AbstractActionableObject> actionableObjects, 
+			ResourcePile resourcesAvailable, 
+			PurchaseCosts purchaseCosts) {
+		/**
+		 * If there is enough resourcesAvailable, buy a base.  Place it by finding a ship that is sufficiently
+		 * far away from the existing bases.
+		 */
+		HashMap<UUID, PurchaseTypes> purchases = new HashMap<UUID, PurchaseTypes>();
+		
+		// TODO: Determine if base is impossible to purchase, add heuristic to purchase anyway
+		boolean bought_base = false;
+		if (purchaseCosts.canAfford(PurchaseTypes.BASE, resourcesAvailable)) {
+			for (AbstractActionableObject actionableObject : actionableObjects) {
+				if (actionableObject instanceof Ship) {
+					Ship ship = (Ship) actionableObject;
+					Set<Base> bases = space.getBases();
+
+					// how far away is this ship to a base of my team?
+					boolean buyBase = true;
+					for (Base base : bases) {
+						if (base.getTeamName().equalsIgnoreCase(getTeamName())) {
+							double distance = space.findShortestDistance(ship.getPosition(), base.getPosition());
+							if (distance < AgentUtils.BASE_BUYING_DISTANCE) {
+								buyBase = false;
+							}
+						}
+					}
+					if (buyBase) {
+						purchases.put(ship.getId(), PurchaseTypes.BASE);
+						bought_base = true;
+						System.out.println("Buying a base!!");
+						break;
+					}
+				}
+			}		
+		} 
+		
+		// Ship Purchase
+		if (bought_base == false && purchaseCosts.canAfford(PurchaseTypes.SHIP, resourcesAvailable)) {
+			for (AbstractActionableObject actionableObject : actionableObjects) {
+				// TODO: What if we chose a base to spawn our ship at for a reason, instead of the first available one?
+				if (actionableObject instanceof Base) {
+					Base base = (Base) actionableObject;
+					purchases.put(base.getId(), PurchaseTypes.SHIP);
+					break;
+				}
+			}
+		}
+		return purchases;
+	}
+	
+	/********************
+	 * Graphics methods *
+	 ********************/
+	
 	@Override
 	public Set<SpacewarGraphics> getGraphics() {
-		// TODO Auto-generated method stub
+		// If graphics are to be drawn, return them.
+		if(AgentUtils.SHOW_GRAPHICS)
+		{
+			HashSet<SpacewarGraphics> graphics = new HashSet<SpacewarGraphics>();
+			graphics.addAll(graphicsToAdd);
+			graphicsToAdd.clear();
+			return graphics;
+		}
 		return null;
 	}
 	
+	/**
+	 * Shows graphics for this client.
+	 * 
+	 * @param space physics model
+	 */
+	private void showGraphics(Toroidal2DPhysics space) {
+		graphicsToAdd = new ArrayList<SpacewarGraphics>();
+		drawGrid(space);
+	    drawSearchTree(space);
+	    drawBlockedGrids();
+	}
 	
+	/**
+	 * Draws grid used by A* search algorithm.
+	 * 
+	 * @param space physics model
+	 */
+	private void drawGrid(Toroidal2DPhysics space) {
+		//create columns
+		Position heightBottom = new Position(0,0);
+		Position heightTop = new Position(0,space.getHeight());
+			
+	    for (int i = ASTAR_GRID_SIZE; i <= space.getWidth(); i = i + ASTAR_GRID_SIZE)
+	    {
+	    	Vector2D te = new Vector2D(0,space.getHeight());
+	    	LineGraphics t= new LineGraphics(heightBottom,heightTop,te);
+			heightBottom = new Position(i,0);
+			heightTop = new Position(i,space.getHeight());
+			t.setLineColor(Color.gray);
+			graphicsToAdd.add(t);
+	    }
+	    
+		heightBottom = new Position(0,0);
+		heightTop = new Position(space.getWidth(),0);
+	    
+	    for (int i = ASTAR_GRID_SIZE; i <= space.getHeight(); i = i + ASTAR_GRID_SIZE)
+	    {
+	    	Vector2D te = new Vector2D(space.getWidth(),0);
+	    	LineGraphics t= new LineGraphics(heightBottom,heightTop,te);
+			heightBottom = new Position(0,i);
+			heightTop = new Position(space.getWidth(),i);
+			t.setLineColor(Color.gray);
+			graphicsToAdd.add(t);
+	    }
+	}
+
+	/**
+	 * Draws search tree from most recent A* search.
+	 * 
+	 * @param space physics model
+	 */
+	private void drawSearchTree(Toroidal2DPhysics space) {
+		LinkedList<AStarPath> currentSearchTree = currentPolicy.getCurrentSearchTree();
+		AStarPath currentPath = currentPolicy.getCurrentPath();
+		if (currentSearchTree != null) {
+			HashSet<LineGraphics> drawnPositions = new HashSet<>();
+			for (AStarPath path : currentSearchTree) {
+				Position prevPosition = null;
+				for (Position p : path.getPositions()) {
+					if (prevPosition != null) {
+						LineGraphics nextLine = new LineGraphics(prevPosition, p,
+								space.findShortestDistanceVector(prevPosition, p));
+						drawnPositions.add(nextLine);
+					}
+					prevPosition = p;
+				}
+			}
+			for (LineGraphics g : drawnPositions) {
+				 graphicsToAdd.add(g);
+			}
+		}
+
+		if (currentPath != null) {
+			HashSet<LineGraphics> drawnPositions = new HashSet<>();
+
+			Position prevPosition = null;
+			for (Position p : currentPath.getPositions()) {
+				if (prevPosition != null) {
+					LineGraphics nextLine = new LineGraphics(prevPosition, p,
+							space.findShortestDistanceVector(prevPosition, p));
+					drawnPositions.add(nextLine);
+				}
+				prevPosition = p;
+			}
+			for (LineGraphics g : drawnPositions) {
+				g.setLineColor(Color.GREEN);
+				graphicsToAdd.add(g);
+			}
+
+		}
+	}
+	
+	/**
+	 * Draws all grids in A* graph that are blocked by obstacles.
+	 */
+	private void drawBlockedGrids() {
+		if(AgentUtils.SHOW_GRAPHICS) {
+			for(Vertex v: graph.getBlockedVertices()) {
+				SpacewarGraphics g = new TargetGraphics(BLOCKED_GRID_GRAPHIC_RADIUS, graph.getCentralCoordinate(v));
+				graphicsToAdd.add(g);
+			}
+		}
+	}
 
 }

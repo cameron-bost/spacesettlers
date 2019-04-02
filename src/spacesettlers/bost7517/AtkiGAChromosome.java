@@ -4,6 +4,8 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.UUID;
 
+import com.thoughtworks.xstream.annotations.XStreamOmitField;
+
 import spacesettlers.actions.AbstractAction;
 import spacesettlers.objects.AbstractObject;
 import spacesettlers.objects.Ship;
@@ -22,53 +24,70 @@ public class AtkiGAChromosome {
 	/**
 	 * Maps states to actions for easy lookup.
 	 */
+	
+	@XStreamOmitField
 	private HashMap<AtkiGAState, AbstractAction> policy;
 	
 	/**
 	 * Tracks asteroids being targeted, indicates which ship.
 	 */
+	@XStreamOmitField
 	private HashMap<UUID, Ship> asteroidToShipMap;
 	
 	/**
 	 * Number of time-steps since last planning routine.
 	 */
+	@XStreamOmitField
 	private int timeSincePlan = AgentUtils.PLAN_INTERVAL;
 	
 	/**
 	 * Last search tree produced by A* search
 	 */
+	@XStreamOmitField
 	private LinkedList<AStarPath> currentSearchTree;
 	
 	/**
 	 * Current planned route, stored as sequence of positions.
 	 */
+	@XStreamOmitField
 	private LinkedList<Position> pointsToVisit;
 	
 	/**
 	 * A* Graph, used for path-finding
 	 */
+	@XStreamOmitField
 	private AStarGraph graph;
 	/**
 	 * Current path being followed
 	 */
+	@XStreamOmitField
 	private AStarPath currentPath;
 	
 	/**
 	 * Given in default reflex agent: tracks whether a ship is aiming for base
 	 */
+	@XStreamOmitField
 	private HashMap<UUID, Boolean> aimingForBase;
 	/**
 	 * Given in default agent: tracks if a ship has just struck the base
 	 * TODO check if base collision is still handled correctly (probably not)
 	 */
+	@XStreamOmitField
 	private HashMap<UUID, Boolean> justHitBase;
 	
 	/**
 	 * Current action being followed by ship
 	 * TODO get rid of this
 	 */
+	@XStreamOmitField
 	private AbstractAction currentAction;
 
+	/**
+	 * Value that is being optimized.
+	 */
+	
+	private double optimalDistance;
+	
 	/**
 	 * Chromosome constructor, global graph object is required argument.
 	 * 

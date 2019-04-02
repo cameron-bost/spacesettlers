@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.awt.event.KeyAdapter;
 import java.awt.event.MouseAdapter;
 import java.awt.geom.AffineTransform;
+import java.io.FileNotFoundException;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
@@ -170,6 +171,7 @@ abstract public class TeamClient {
 	
 	/**
 	 * Called when the client is shut down (which is at the end of a game)
+	 * @throws FileNotFoundException 
 	 */
 	abstract public void shutDown(Toroidal2DPhysics space);
 

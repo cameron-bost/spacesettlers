@@ -2,6 +2,10 @@ package spacesettlers.bost7517;
 
 import java.util.Random;
 
+import com.thoughtworks.xstream.annotations.XStreamAlias;
+import com.thoughtworks.xstream.annotations.XStreamImplicit;
+import com.thoughtworks.xstream.annotations.XStreamOmitField;
+
 import spacesettlers.simulator.Toroidal2DPhysics;
 
 /**
@@ -14,13 +18,14 @@ import spacesettlers.simulator.Toroidal2DPhysics;
  *
  */
 public class AtkiGAPopulation {
-	private AtkiGAChromosome[] population;
 	
+	private AtkiGAChromosome[] population;
 	private int currentPopulationCounter;
 	
 	private double[] fitnessScores;
 	
 	/**Shared Random object*/
+	@XStreamOmitField
 	private Random random;
 	/**Chance of mutation (out of 1.0)*/
 	private static double pMutation = 0.10;
@@ -186,6 +191,7 @@ public class AtkiGAPopulation {
 	public AtkiGAChromosome getFirstMember() {
 		return population[0];
 	}
+	
 }
 	
 

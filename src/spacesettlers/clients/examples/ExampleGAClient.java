@@ -154,21 +154,20 @@ public class ExampleGAClient extends TeamClient {
 	}
 
 	@Override
-	public void shutDown(Toroidal2DPhysics space) {
+	public void shutDown(Toroidal2DPhysics space){
 		XStream xstream = new XStream();
 		xstream.alias("ExampleGAPopulation", ExampleGAPopulation.class);
-
 		try { 
 			// if you want to compress the file, change FileOuputStream to a GZIPOutputStream
 			xstream.toXML(population, new FileOutputStream(new File(getKnowledgeFile())));
 		} catch (XStreamException e) {
 			// if you get an error, handle it somehow as it means your knowledge didn't save
 			System.out.println("Can't save knowledge file in shutdown ");
-			System.out.println(e.getMessage());
+			//System.out.println(e.getMessage());
 		} catch (FileNotFoundException e) {
 			// file is missing so start from scratch (but tell the user)
 			System.out.println("Can't save knowledge file in shutdown ");
-			System.out.println(e.getMessage());
+			//System.out.println(e.getMessage());
 		}
 	}
 

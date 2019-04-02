@@ -44,8 +44,8 @@
 		 each other and the static teams. -->
 	<variableTeams>
 		<HighLevelTeamConfig>
-			<teamName>ExampleTeam</teamName>
-			<configFile>passive-heuristic-clientinit2.xml</configFile>
+			<teamName>BDSM GA CLIENT</teamName>
+			<configFile>spacesettlersinit.xml</configFile>
 		</HighLevelTeamConfig>
 	</variableTeams>
 

@@ -4,6 +4,8 @@ import java.awt.Color;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -135,15 +137,13 @@ public class AtkiGAClient extends TeamClient {
 				actions.put(actionable.getId(), new DoNothingAction());
 			}
 		}
-<<<<<<< HEAD
-=======
+
 		
 		// Show graphics (if indicated)
 		if(AgentUtils.SHOW_GRAPHICS) {
 			showGraphics(space);
 		}
 		
->>>>>>> 1674e9253409737357371c1d6a0a53bc87219e6a
 		return actions;
 	}
 
@@ -183,10 +183,10 @@ public class AtkiGAClient extends TeamClient {
 	@Override
 	public void initialize(Toroidal2DPhysics space) {
 		XStream xstream = new XStream();
-		xstream.alias("ExampleGAPopulation", AtkiGAPopulation.class);
+		xstream.alias("GAPopulation", AtkiGAPopulation.class);
 		graph = AStarGraph.getInstance(space.getHeight(), space.getWidth(), AgentUtils.DEBUG);
 
-		// try to load the population from the existing saved file.  If that failes, start from scratch
+		// try to load the population from the existing saved file.  If that fails, start from scratch
 		try { 
 			population = (AtkiGAPopulation) xstream.fromXML(new File(getKnowledgeFile()));
 		} catch (XStreamException e) {
@@ -202,10 +202,11 @@ public class AtkiGAClient extends TeamClient {
 	public void shutDown(Toroidal2DPhysics space) {
 		XStream xstream = new XStream();
 		xstream.alias("ExampleGAPopulation", AtkiGAPopulation.class);
-
+		xstream.processAnnotations(AtkiGAPopulation.class);
 		try { 
 			// if you want to compress the file, change FileOuputStream to a GZIPOutputStream
-			xstream.toXML(population, new FileOutputStream(new File(getKnowledgeFile())));
+			xstream.toXML(population, new FileWriter(new File(getKnowledgeFile())));
+			
 		} catch (XStreamException e) {
 			// if you get an error, handle it somehow as it means your knowledge didn't save
 			System.out.println("Can't save knowledge file in shutdown ");
@@ -214,7 +215,12 @@ public class AtkiGAClient extends TeamClient {
 			// file is missing so start from scratch (but tell the user)
 			System.out.println("Can't save knowledge file in shutdown ");
 			System.out.println(e.getMessage());
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
+		
+		
 	}
 
 	/******************
@@ -260,7 +266,7 @@ public class AtkiGAClient extends TeamClient {
 					if (buyBase) {
 						purchases.put(ship.getId(), PurchaseTypes.BASE);
 						bought_base = true;
-						System.out.println("Buying a base!!");
+						//System.out.println("Buying a base!!");
 						break;
 					}
 				}

@@ -1,4 +1,4 @@
-<ExampleGAPopulation>
+<GAPopulation>
   <population>
     <spacesettlers.bost7517.AtkiGAChromosome>
       <optimalDistance>0.0</optimalDistance>
@@ -76,7 +76,7 @@
       <optimalDistance>0.0</optimalDistance>
     </spacesettlers.bost7517.AtkiGAChromosome>
   </population>
-  <currentPopulationCounter>2</currentPopulationCounter>
+  <currentPopulationCounter>6</currentPopulationCounter>
   <fitnessScores>
     <double>0.0</double>
     <double>0.0</double>
@@ -104,4 +104,14 @@
     <double>0.0</double>
     <double>0.0</double>
   </fitnessScores>
-</ExampleGAPopulation>
+  <random serialization="custom">
+    <java.util.Random>
+      <default>
+        <seed>247786670949333</seed>
+        <nextNextGaussian>0.0</nextNextGaussian>
+        <haveNextNextGaussian>false</haveNextNextGaussian>
+      </default>
+    </java.util.Random>
+  </random>
+  <populationSize>25</populationSize>
+</GAPopulation>

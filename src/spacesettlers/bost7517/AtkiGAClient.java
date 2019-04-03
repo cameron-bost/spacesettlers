@@ -125,7 +125,8 @@ public class AtkiGAClient extends TeamClient {
 				
 				// If a policy was selected, get corresponding action
 				if(policyNumber != 0) {
-					AtkiGAState currentState = new AtkiGAState(space, ship);		
+					AtkiGAState currentState = new AtkiGAState(space, ship);
+					
 					action = currentPolicy.getCurrentAction(space, ship, currentState, policyNumber);
 				}
 				
@@ -189,6 +190,25 @@ public class AtkiGAClient extends TeamClient {
 		// try to load the population from the existing saved file.  If that fails, start from scratch
 		try { 
 			population = (AtkiGAPopulation) xstream.fromXML(new File(getKnowledgeFile()));
+		
+			/*
+			 * Re sets the each populations chromosome policy variables.
+			 */
+			if(population.getCurrentPopulation() > populationSize) 
+			{
+				for(int i = 0; i < population.getCurrentPopulation() ; i++)
+				{
+					population.getMember(i).setPolicy(graph);
+				}
+			}
+			else
+			{
+				for(int i = 0; i < populationSize; i++)
+				{
+					population.getMember(i).setPolicy(graph);
+				}
+			}
+		
 		} catch (XStreamException e) {
 			// if you get an error, handle it other than a null pointer because
 			// the error will happen the first time you run
@@ -201,7 +221,8 @@ public class AtkiGAClient extends TeamClient {
 	@Override
 	public void shutDown(Toroidal2DPhysics space) {
 		XStream xstream = new XStream();
-		xstream.alias("ExampleGAPopulation", AtkiGAPopulation.class);
+		
+		xstream.alias("GAPopulation", AtkiGAPopulation.class);
 		xstream.processAnnotations(AtkiGAPopulation.class);
 		try { 
 			// if you want to compress the file, change FileOuputStream to a GZIPOutputStream

@@ -2,6 +2,8 @@ package spacesettlers.bost7517;
 
 import java.util.Set;
 
+import com.thoughtworks.xstream.annotations.XStreamOmitField;
+
 import spacesettlers.objects.AbstractObject;
 import spacesettlers.objects.Asteroid;
 import spacesettlers.objects.Base;
@@ -16,9 +18,13 @@ import spacesettlers.simulator.Toroidal2DPhysics;
  *
  */
 public class AtkiGAState {
+	
 	private double distanceToNearestMineableAsteroid;
+	@XStreamOmitField
 	private Asteroid nearestMineableAsteroid;
+	@XStreamOmitField
 	private AbstractObject energyTarget;
+	@XStreamOmitField
 	private Base base;
 	
 	public AtkiGAState(Toroidal2DPhysics space, Ship myShip) 

@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.UUID;
 
+import com.thoughtworks.xstream.annotations.XStreamImplicit;
 import com.thoughtworks.xstream.annotations.XStreamOmitField;
 
 import spacesettlers.actions.AbstractAction;
@@ -21,10 +22,10 @@ import spacesettlers.utilities.Position;
  * @version 0.3
  */
 public class AtkiGAChromosome {
+	
 	/**
 	 * Maps states to actions for easy lookup.
 	 */
-	
 	@XStreamOmitField
 	private HashMap<AtkiGAState, AbstractAction> policy;
 	
@@ -79,6 +80,7 @@ public class AtkiGAChromosome {
 	 * Current action being followed by ship
 	 * TODO get rid of this
 	 */
+	
 	@XStreamOmitField
 	private AbstractAction currentAction;
 
@@ -86,6 +88,9 @@ public class AtkiGAChromosome {
 	 * Value that is being optimized.
 	 */
 	
+	/**
+	 * this value is TBD
+	 */
 	private double optimalDistance;
 	
 	/**
@@ -113,6 +118,7 @@ public class AtkiGAChromosome {
 	public AbstractAction getCurrentAction(Toroidal2DPhysics space, Ship myShip, AtkiGAState currentState,
 			int policyNumber) {
 		// If policy does not contain this state, determine correct action then add to policy
+
 		if (!policy.containsKey(currentState)) {
 			if(AgentUtils.DEBUG) {
 				System.out.println("<Chromosome.getAction> - calling policy #"+policyNumber);
@@ -181,6 +187,7 @@ public class AtkiGAChromosome {
 			
 			// Policy 3: Go to best asteroid
 			if (policyNumber == 3) {
+				
 				if (currentState.getNearestMineableAsteroid() != null) {
 					asteroidToShipMap.put(currentState.getNearestMineableAsteroid().getId(), myShip);
 					checkForPlan(space, myShip, currentState.getNearestMineableAsteroid());
@@ -212,6 +219,19 @@ public class AtkiGAChromosome {
 			}
 		}
 		return policy.get(currentState);
+	}
+	/**
+	 * Re-initilazie policys needed values.
+	 * This will take in a graph 
+	 * @param graph
+	 */
+	public void setPolicy(AStarGraph graph)
+	{
+		policy = new HashMap<AtkiGAState, AbstractAction>();
+		asteroidToShipMap = new HashMap<UUID, Ship>();
+		aimingForBase = new HashMap<UUID, Boolean>();
+		justHitBase = new HashMap<UUID, Boolean>();
+		this.graph = graph;
 	}
 	
 	void checkForPlan(Toroidal2DPhysics space, Ship myShip, AbstractObject target) {

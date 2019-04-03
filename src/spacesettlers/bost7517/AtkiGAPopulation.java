@@ -20,13 +20,18 @@ import spacesettlers.simulator.Toroidal2DPhysics;
 public class AtkiGAPopulation {
 	
 	private AtkiGAChromosome[] population;
+	
 	private int currentPopulationCounter;
 	
 	private double[] fitnessScores;
 	
 	/**Shared Random object*/
-	@XStreamOmitField
 	private Random random;
+	private int populationSize;
+	
+	@XStreamOmitField
+	private AStarGraph graph;
+	
 	/**Chance of mutation (out of 1.0)*/
 	private static double pMutation = 0.10;
 	/**Chance of crossover (out of 1.0)*/
@@ -38,8 +43,9 @@ public class AtkiGAPopulation {
 	public AtkiGAPopulation(int populationSize, AStarGraph _graph, Random _random) {
 		super();
 		
+		this.populationSize = populationSize;
 		random = _random;
-		
+		graph = _graph;
 		// start at member zero
 		currentPopulationCounter = 0;
 		
@@ -190,6 +196,23 @@ public class AtkiGAPopulation {
 	 */
 	public AtkiGAChromosome getFirstMember() {
 		return population[0];
+	}
+	/**
+	 * return any member of population.
+	 * @param i
+	 * @return
+	 */
+	public AtkiGAChromosome getMember(int i) {
+		return population[i];
+	}
+	
+	/**
+	 * returns the current population size.
+	 * @return
+	 */
+	public int getCurrentPopulation()
+	{
+		return population.length;
 	}
 	
 }

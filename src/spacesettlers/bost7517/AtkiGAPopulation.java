@@ -21,7 +21,7 @@ import spacesettlers.simulator.Toroidal2DPhysics;
  */
 public class AtkiGAPopulation {
 	
-	private boolean doExport = false;
+	private boolean doExport = true;
 	
 	private final File fitnessOutPop = Paths.get("fitness_per_gen.csv").toFile();
 	
@@ -183,14 +183,14 @@ public class AtkiGAPopulation {
 		 * Tournament
 		 * - Select 3 individuals, only keep the best one
 		 */
-		int tournamentSize = 3;
+		int tournamentSize = 2;
 		LinkedList<AtkiGAChromosome> ret = new LinkedList<>();
 		shufflePopulation();
-		for(int i = 2; i < population.length; i+=tournamentSize) {
+		for(int i = tournamentSize - 1; i < population.length; i+=tournamentSize) {
 			// Get best chromosome for this tournament
 			AtkiGAChromosome bestOne = null;
 			double bestFitness = -1;
-			for(int j = i; j >= i-2; j--) {
+			for(int j = i; j >= i-1; j--) {
 				if(fitnessScores[j] >= bestFitness) {
 					bestFitness = fitnessScores[j];
 					bestOne = population[j];

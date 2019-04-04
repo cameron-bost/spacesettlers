@@ -58,7 +58,7 @@ public class AtkiGAClient extends TeamClient {
 	/**
 	 * How large of a population to evaluate
 	 */
-	private static final int POPULATION_SIZE = 10;
+	private static final int POPULATION_SIZE = 30;
 	/**
 	 * Set of graphics to be displayed. Generated during each timestep.
 	 */
@@ -81,7 +81,7 @@ public class AtkiGAClient extends TeamClient {
 	/**
 	 * How many steps each policy is evaluated for before moving to the next one
 	 */
-	static final int EVALUATION_STEPS = 5000;
+	static final int EVALUATION_STEPS = 10000;
 	
 	/**
 	 * Current step

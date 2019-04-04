@@ -81,7 +81,7 @@ public class AtkiGAClient extends TeamClient {
 	/**
 	 * How large of a population to evaluate
 	 */
-	private int populationSize = 25;
+	private int populationSize = 15;
 	
 	/**
 	 * Current step
@@ -96,7 +96,7 @@ public class AtkiGAClient extends TeamClient {
 	 */
 	static final int ASTAR_GRID_SIZE = AStarGraph.GRID_SIZE;
 	
-	private double lastKnownScore = 0;
+	private int lastKnownScore = 0;
 	
 	@Override
 	public Map<UUID, AbstractAction> getMovementStart(Toroidal2DPhysics space,
@@ -161,7 +161,7 @@ public class AtkiGAClient extends TeamClient {
 		// Update score in population object
 		for(ImmutableTeamInfo ti: space.getTeamInfo()) {
 			if(ti.getTeamName().equals(getTeamName())) {
-				lastKnownScore = ti.getScore();
+				lastKnownScore = (int) ti.getScore();
 				population.updateScore(ti.getScore());
 			}
 		}
@@ -257,7 +257,7 @@ public class AtkiGAClient extends TeamClient {
 		/***/
 		if(exportChromosomeData) {
 			try(BufferedWriter fOut = new BufferedWriter(new FileWriter(fitnessOut, fitnessOut.exists()))){
-				fOut.write((int) lastKnownScore);
+				fOut.write(Integer.toString(lastKnownScore));
 				fOut.newLine();
 			} catch (IOException e) {
 				System.err.println("<BDSM_GA.shutDown> - Failed to write fitness data to file: "+e.getMessage());

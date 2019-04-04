@@ -206,6 +206,11 @@ public class AtkiGAPopulation {
 	public void updateScore(double d) {
 		this.currentScore = d;
 	}
+
+	public AtkiGAChromosome getCurrentMember() {
+		currentPopulationIndex %= populationSize;
+		return population[currentPopulationIndex];
+	}
 	
 }
 	

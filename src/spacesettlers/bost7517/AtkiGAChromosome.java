@@ -87,9 +87,22 @@ public class AtkiGAChromosome {
 	 * Gene 1: Optimal total distance from ship to asteroid to base.
 	 */
 	private int optimalDistance;
-	/**Mutation step amount for optimal distance*/
 	private static final int mStep_optimalDistance = 5;
-	private static final int UPPERBOUND_OPTIMAL_DISTANCE = 2000;
+	private static final int upperBound_optimalDistance = 2000;
+	
+	/**
+	 * Gene 2: Low energy amount
+	 */
+	private int lowEnergyThreshold;
+	private static final int mStep_lowEnergyThreshold = 50;
+	private static final int upperBound_lowEnergyThreshold = 5000;
+	
+	/**
+	 * Gene 2: Resource Capacity Before Base
+	 */
+	private int resourceThreshold;
+	private static final int mStep_resourceThreshold = 50;
+	private static final int upperBound_resourceThreshold = 8000;
 	
 	/**
 	 * Chromosome constructor, global graph object is required argument.
@@ -103,14 +116,24 @@ public class AtkiGAChromosome {
 	}
 	
 	private void setRandomGeneValues(Random random) {
-		optimalDistance = (random.nextInt(UPPERBOUND_OPTIMAL_DISTANCE/5)+1)*5;
+		optimalDistance = (random.nextInt(upperBound_optimalDistance/mStep_optimalDistance)+1)*mStep_optimalDistance;
+		lowEnergyThreshold = (random.nextInt(upperBound_lowEnergyThreshold/mStep_lowEnergyThreshold)+1)*mStep_lowEnergyThreshold;
+		resourceThreshold = (random.nextInt(upperBound_resourceThreshold/mStep_resourceThreshold)+1)*mStep_resourceThreshold;
 		if(AgentUtils.DEBUG) {
-			System.out.println("Creating new chromosome w/ optimalDistance="+optimalDistance);
+			System.out.println("Creating new chromosome w/:"
+					+ "\n\toptimalDistance="+optimalDistance
+					+ "\n\tlowEnergyThreshold="+lowEnergyThreshold
+					+ "\n\tresourceThreshold="+resourceThreshold);
 		}
 	}
 
-	private AtkiGAChromosome(double _optimalDistance) {
+	private AtkiGAChromosome(int _optimalDistance, int _lowEnergyThreshold, int _resourceThreshold) {
 		initFields();
+		
+		// Set initial gene values
+		optimalDistance = _optimalDistance;
+		lowEnergyThreshold = _lowEnergyThreshold;
+		resourceThreshold = _resourceThreshold;
 	}
 
 	/**
@@ -122,25 +145,22 @@ public class AtkiGAChromosome {
 	 * @param policyNumber policy number being employed
 	 * @return Action for ship to perform during this time-step.
 	 */
-	public AbstractAction getCurrentAction(Toroidal2DPhysics space, Ship myShip, AtkiGAState currentState,
-			int policyNumber) {
+	public AbstractAction getCurrentAction(Toroidal2DPhysics space, Ship myShip) {
 		// If new game, some variables will be null, so we reset them.
 		if(policy == null) {
 			initFields();
 		}
 		
+		// Init state
+		AtkiGAState currentState = new AtkiGAState(space, myShip, optimalDistance);
+		
 		// If policy does not contain this state, determine correct action then add to policy
-
 		if (!policy.containsKey(currentState)) {
-			if(AgentUtils.DEBUG) {
-				System.out.println("<Chromosome.getAction> - calling policy #"+policyNumber);
-			}
-			
 			// Default action is currentAction
 			currentAction = myShip.getCurrentAction();
-			
-			// Policy 1: Go to energy source
-			if (policyNumber == 1) {
+			policy.put(currentState, currentAction);
+			// Policy 1: if energy is low, target energy beacon
+			if ((myShip.getEnergy() < lowEnergyThreshold)) {
 				if (currentState.getEnergySource() != null) {
 					checkForPlan(space, myShip, currentState.getEnergySource());
 
@@ -166,8 +186,8 @@ public class AtkiGAChromosome {
 				}
 			}
 
-			// Policy 2: Go to base (dump resources)
-			if (policyNumber == 2) {
+			// Policy 2: if on-board resources are high, target base 
+			else if (myShip.getResources().getTotal() > resourceThreshold) {
 				checkForPlan(space, myShip, currentState.getBase());
 
 				// Checks that the previous A* action is completed.
@@ -197,16 +217,12 @@ public class AtkiGAChromosome {
 				}
 			}
 			
-			// Policy 3: Go to best asteroid
-			if (policyNumber == 3) {
-				if (currentState.getNearestMineableAsteroid() != null) {
-					
-					//Changes the state to choose the asteroid based on being in range of the ship
-					// to the optimal distance. 
-					currentState.changeDistance(optimalDistance,space,myShip);
-					
-					asteroidToShipMap.put(currentState.getNearestMineableAsteroid().getId(), myShip);
-					checkForPlan(space, myShip, currentState.getNearestMineableAsteroid());
+			// Policy 3: if current action is done (or null), target nearest asteroid
+			else if (myShip.getCurrentAction() == null || myShip.getCurrentAction().isMovementFinished(space)) {
+				
+				if (currentState.getBestMineableAsteroid() != null) {
+					asteroidToShipMap.put(currentState.getBestMineableAsteroid().getId(), myShip);
+					checkForPlan(space, myShip, currentState.getBestMineableAsteroid());
 					// Checks to make sure that the current A* is move is finished.
 					if (currentAction != null) {
 						if (!currentAction.isMovementFinished(space)) {
@@ -221,7 +237,7 @@ public class AtkiGAChromosome {
 							//Will assign a Position variable with the positions.
 							Position newPosition = new Position(pointsToVisit.getFirst().getX(),pointsToVisit.getFirst().getY());
 							//Create the action to move to the A* position.
-							policy.put(currentState, new BDSMMoveAction(space, myShip.getPosition(), newPosition, currentState.getNearestMineableAsteroid()));
+							policy.put(currentState, new BDSMMoveAction(space, myShip.getPosition(), newPosition, currentState.getBestMineableAsteroid()));
 							
 							pointsToVisit.poll();//pops the top
 						}
@@ -229,8 +245,8 @@ public class AtkiGAChromosome {
 
 					policy.put(currentState,
 							new BDSMMoveToObjectAction(space, myShip.getPosition(),
-									currentState.getNearestMineableAsteroid(),
-									currentState.getNearestMineableAsteroid().getPosition().getTranslationalVelocity()));
+									currentState.getBestMineableAsteroid(),
+									currentState.getBestMineableAsteroid().getPosition().getTranslationalVelocity()));
 				}
 			}
 		}
@@ -287,10 +303,28 @@ public class AtkiGAChromosome {
 	}
 
 	/**
-	 * Mutates this chromosome.
+	 * Mutates this chromosome. Each gene has a 50% chance of mutating,
+	 * with equal weight on increase/decrease mutation.
 	 */
 	public void mutate(Random random) {
-		optimalDistance += (random.nextDouble() <= 0.5 ? -1 : 1) * mStep_optimalDistance;
+		// Mutate optimal distance
+		double r = random.nextDouble();
+		optimalDistance += (r <= 0.5 ? r <= 0.25 ? -1 : 1 : 0) * mStep_optimalDistance;
+		if(optimalDistance > upperBound_optimalDistance) {
+			optimalDistance = upperBound_optimalDistance;
+		}
+		// Mutate low energy threshold
+		r = random.nextDouble();
+		lowEnergyThreshold += (r <= 0.5 ? r <= 0.25 ? -1 : 1 : 0) * mStep_lowEnergyThreshold;
+		if(optimalDistance > upperBound_lowEnergyThreshold) {
+			optimalDistance = upperBound_lowEnergyThreshold;
+		}
+		// Mutate resource threshold
+		r = random.nextDouble();
+		resourceThreshold += (r <= 0.5 ? r <= 0.25 ? -1 : 1 : 0) * mStep_resourceThreshold;
+		if(optimalDistance > upperBound_resourceThreshold) {
+			optimalDistance = upperBound_resourceThreshold;
+		}
 	}
 
 	/**
@@ -302,7 +336,9 @@ public class AtkiGAChromosome {
 	 * @return Child of the two parents
 	 */
 	public static AtkiGAChromosome doCrossover(AtkiGAChromosome p1, AtkiGAChromosome p2, Random random) {
-		double optimalDistance = (random.nextDouble() <= 0.5 ? p1.optimalDistance : p2.optimalDistance);
-		return new AtkiGAChromosome(optimalDistance);
+		int optimalDistance = (random.nextDouble() <= 0.5 ? p1.optimalDistance : p2.optimalDistance);
+		int lowEnergyThreshold = (random.nextDouble() <= 0.5 ? p1.lowEnergyThreshold : p2.lowEnergyThreshold);
+		int resourceThreshold = (random.nextDouble() <= 0.5 ? p1.resourceThreshold : p2.resourceThreshold);
+		return new AtkiGAChromosome(optimalDistance, lowEnergyThreshold, resourceThreshold);
 	}
 }

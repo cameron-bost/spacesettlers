@@ -1,7 +1,5 @@
 package spacesettlers.bost7517;
 
-import java.util.Set;
-
 import com.thoughtworks.xstream.annotations.XStreamOmitField;
 
 import spacesettlers.objects.AbstractObject;
@@ -19,7 +17,7 @@ import spacesettlers.simulator.Toroidal2DPhysics;
  */
 public class AtkiGAState {
 	
-	private double distanceToNearestMineableAsteroid;
+	private int lowestDistance;
 	@XStreamOmitField
 	private Asteroid nearestMineableAsteroid;
 	@XStreamOmitField
@@ -27,9 +25,9 @@ public class AtkiGAState {
 	@XStreamOmitField
 	private Base base;
 	
-	public AtkiGAState(Toroidal2DPhysics space, Ship myShip) 
+	public AtkiGAState(Toroidal2DPhysics space, Ship myShip, double optDist) 
 	{
-		updateState(space, myShip);
+		updateState(space, myShip, optDist);
 	}
 	
 	/**
@@ -37,26 +35,12 @@ public class AtkiGAState {
 	 * 
 	 * @param space Physics model for game.
 	 * @param myShip Ship of concern.
+	 * @param optDist 
 	 */
-	public void updateState(Toroidal2DPhysics space, Ship myShip) {
-		Set<Asteroid> asteroids = space.getAsteroids();
-		distanceToNearestMineableAsteroid = Integer.MAX_VALUE;
-		double distance;
-
-		for (Asteroid asteroid : asteroids) {
-			if (asteroid.isMineable()) {
-				distance = space.findShortestDistance(myShip.getPosition(), asteroid.getPosition());
-				if (distance < distanceToNearestMineableAsteroid) {
-					distanceToNearestMineableAsteroid = distance;
-					nearestMineableAsteroid = asteroid;
-				}
-			}
-		}
-		
+	public void updateState(Toroidal2DPhysics space, Ship myShip, double optDist) {
+		nearestMineableAsteroid = AgentUtils.getBestAsteroidWtOptDist(space, myShip, optDist);
 		energyTarget = AgentUtils.findNearestEnergySource(space, myShip);
-		
 		base = AgentUtils.findNearestBase(space, myShip);
-		
 	}
 
 	/**
@@ -80,7 +64,7 @@ public class AtkiGAState {
 	 * 
 	 * @return
 	 */
-	public Asteroid getNearestMineableAsteroid() {
+	public Asteroid getBestMineableAsteroid() {
 		return nearestMineableAsteroid;
 	}
 
@@ -93,7 +77,7 @@ public class AtkiGAState {
 		final int prime = 31;
 		int result = 1;
 		long temp;
-		temp = Double.doubleToLongBits(distanceToNearestMineableAsteroid);
+		temp = Double.doubleToLongBits(lowestDistance);
 		result = prime * result + (int) (temp ^ (temp >>> 32));
 		return result;
 	}
@@ -111,34 +95,9 @@ public class AtkiGAState {
 		if (getClass() != obj.getClass())
 			return false;
 		AtkiGAState other = (AtkiGAState) obj;
-		if (Double.doubleToLongBits(distanceToNearestMineableAsteroid) != Double
-				.doubleToLongBits(other.distanceToNearestMineableAsteroid))
+		if (Double.doubleToLongBits(lowestDistance) != Double
+				.doubleToLongBits(other.lowestDistance))
 			return false;
 		return true;
 	}
-	/**
-	 * Will re-determine the asteroid based on the optimalDistance Variable.
-	 * @param optimalDistance
-	 * @param space
-	 * @param myShip
-	 */
-	public void changeDistance(int optimalDistance,Toroidal2DPhysics space,Ship myShip) 
-	{
-		Set<Asteroid> asteroids = space.getAsteroids();
-		distanceToNearestMineableAsteroid = Integer.MAX_VALUE;
-		double distance;
-
-		for (Asteroid asteroid : asteroids) {
-			if (asteroid.isMineable()) {
-				distance = space.findShortestDistance(myShip.getPosition(), asteroid.getPosition());
-				if (distance < distanceToNearestMineableAsteroid && distance <= optimalDistance) {
-					distanceToNearestMineableAsteroid = distance;
-					nearestMineableAsteroid = asteroid;
-				}
-			}
-		}
-	}
-
-
-
 }

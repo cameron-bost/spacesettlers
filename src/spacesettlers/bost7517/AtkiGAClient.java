@@ -75,7 +75,7 @@ public class AtkiGAClient extends TeamClient {
 	/**
 	 * How large of a population to evaluate
 	 */
-	private int populationSize = 25;
+	private int populationSize = 50;
 	
 	/**
 	 * Current step

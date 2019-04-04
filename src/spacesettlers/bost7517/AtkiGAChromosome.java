@@ -93,6 +93,9 @@ public class AtkiGAChromosome {
 	 */
 	private double optimalDistance;
 	
+	private double score;
+	private double totalScore;
+	
 	/**
 	 * Chromosome constructor, global graph object is required argument.
 	 * 
@@ -218,6 +221,12 @@ public class AtkiGAChromosome {
 				}
 			}
 		}
+		score = myShip.getResources().getTotal();
+		if(score != 0)
+		{
+		totalScore = score;
+		}
+		System.out.println("<DEBUG> - Current score = " + totalScore);
 		return policy.get(currentState);
 	}
 	/**
@@ -240,7 +249,8 @@ public class AtkiGAChromosome {
 			timeSincePlan = 0;
 			currentPath = graph.getPathTo(myShip, target, space);
 			currentSearchTree = graph.getSearchTree();
-			pointsToVisit = currentPath.getPositions();
+			if(currentPath != null)
+				pointsToVisit = currentPath.getPositions();
 		} else {
 			timeSincePlan++;
 		}
@@ -267,7 +277,13 @@ public class AtkiGAChromosome {
 	 * Update time step for plan.
 	 * Note: unchanged from ExampleGAChromosome
 	 */
-	public void currentPolicyUpdateTime() {
+	public void currentPolicyUpdateTime() 
+	{
 		timeSincePlan = timeSincePlan + 1;
+	}
+	
+	public double getCurrentScore()
+	{
+		return score;
 	}
 }

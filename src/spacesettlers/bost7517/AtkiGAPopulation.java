@@ -67,6 +67,7 @@ public class AtkiGAPopulation {
 	 */
 	public void evaluateFitnessForCurrentMember(Toroidal2DPhysics space) {
 		fitnessScores[currentPopulationCounter] = 0;
+
 	}
 
 	/**

@@ -124,16 +124,21 @@ public class AtkiGAState {
 	 */
 	public void changeDistance(int optimalDistance,Toroidal2DPhysics space,Ship myShip) 
 	{
+		int bestMoney = Integer.MIN_VALUE;
 		Set<Asteroid> asteroids = space.getAsteroids();
-		distanceToNearestMineableAsteroid = Integer.MAX_VALUE;
+		distanceToNearestMineableAsteroid = optimalDistance;
 		double distance;
 
 		for (Asteroid asteroid : asteroids) {
 			if (asteroid.isMineable()) {
-				distance = space.findShortestDistance(myShip.getPosition(), asteroid.getPosition());
-				if (distance < distanceToNearestMineableAsteroid && distance <= optimalDistance) {
-					distanceToNearestMineableAsteroid = distance;
-					nearestMineableAsteroid = asteroid;
+				if (asteroid.isMineable() && asteroid.getResources().getTotal() > bestMoney) {
+					distance = space.findShortestDistance(myShip.getPosition(), asteroid.getPosition());
+					if (distance < distanceToNearestMineableAsteroid) 
+					{
+						bestMoney = asteroid.getResources().getTotal();
+						distanceToNearestMineableAsteroid = distance;
+						nearestMineableAsteroid = asteroid;
+					}
 				}
 			}
 		}

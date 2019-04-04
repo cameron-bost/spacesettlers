@@ -132,7 +132,6 @@ public class AtkiGAState {
 			if (asteroid.isMineable()) {
 				distance = space.findShortestDistance(myShip.getPosition(), asteroid.getPosition());
 				if (distance < distanceToNearestMineableAsteroid && distance <= optimalDistance) {
-					System.out.println("<Found Asteroid>");
 					distanceToNearestMineableAsteroid = distance;
 					nearestMineableAsteroid = asteroid;
 				}

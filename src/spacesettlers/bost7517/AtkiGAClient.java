@@ -1,11 +1,12 @@
 package spacesettlers.bost7517;
 
 import java.awt.Color;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -21,6 +22,7 @@ import spacesettlers.actions.AbstractAction;
 import spacesettlers.actions.DoNothingAction;
 import spacesettlers.actions.PurchaseCosts;
 import spacesettlers.actions.PurchaseTypes;
+import spacesettlers.clients.ImmutableTeamInfo;
 import spacesettlers.clients.TeamClient;
 import spacesettlers.graphics.LineGraphics;
 import spacesettlers.graphics.SpacewarGraphics;
@@ -48,6 +50,10 @@ import spacesettlers.utilities.Vector2D;
  */
 
 public class AtkiGAClient extends TeamClient {
+	
+	private boolean exportChromosomeData = true;
+	private final String fitnessOutFileName = "bdsm_fit_results.csv";
+	private final File fitnessOut = Paths.get(fitnessOutFileName).toFile();
 	/**
 	 * Set of graphics to be displayed. Generated during each timestep.
 	 */
@@ -70,12 +76,12 @@ public class AtkiGAClient extends TeamClient {
 	/**
 	 * How many steps each policy is evaluated for before moving to the next one
 	 */
-	static final int EVALUATION_STEPS = 2000;
+	static final int EVALUATION_STEPS = 5000;
 	
 	/**
 	 * How large of a population to evaluate
 	 */
-	private int populationSize = 50;
+	private int populationSize = 15;
 	
 	/**
 	 * Current step
@@ -89,6 +95,8 @@ public class AtkiGAClient extends TeamClient {
 	 * Local variable for AStar graph grid size (pixels)
 	 */
 	static final int ASTAR_GRID_SIZE = AStarGraph.GRID_SIZE;
+	
+	private int lastKnownScore = 0;
 	
 	@Override
 	public Map<UUID, AbstractAction> getMovementStart(Toroidal2DPhysics space,
@@ -150,9 +158,14 @@ public class AtkiGAClient extends TeamClient {
 
 	@Override
 	public void getMovementEnd(Toroidal2DPhysics space, Set<AbstractActionableObject> actionableObjects) {
-		/**
-		 * Note: Method unchanged from ExampleGAClient
-		 */
+		// Update score in population object
+		for(ImmutableTeamInfo ti: space.getTeamInfo()) {
+			if(ti.getTeamName().equals(getTeamName())) {
+				lastKnownScore = (int) ti.getScore();
+				population.updateScore(ti.getScore());
+			}
+		}
+		
 		// increment the step counter
 		steps++;
 
@@ -198,14 +211,14 @@ public class AtkiGAClient extends TeamClient {
 			{
 				for(int i = 0; i < population.getCurrentPopulation() ; i++)
 				{
-					population.getMember(i).setPolicy(graph);
+					population.getMember(i).initFields();
 				}
 			}
 			else
 			{
 				for(int i = 0; i < populationSize; i++)
 				{
-					population.getMember(i).setPolicy(graph);
+					population.getMember(i).initFields();
 				}
 			}
 		
@@ -213,15 +226,15 @@ public class AtkiGAClient extends TeamClient {
 			// if you get an error, handle it other than a null pointer because
 			// the error will happen the first time you run
 			System.out.println("No existing population found - starting a new one from scratch");
-			population = new AtkiGAPopulation(populationSize, graph, random);
+			population = new AtkiGAPopulation(populationSize, random);
 		}
 		currentPolicy = population.getFirstMember();
 	}
 
 	@Override
 	public void shutDown(Toroidal2DPhysics space) {
+		/**Output Population object*/
 		XStream xstream = new XStream();
-		
 		xstream.alias("GAPopulation", AtkiGAPopulation.class);
 		xstream.processAnnotations(AtkiGAPopulation.class);
 		try { 
@@ -241,7 +254,15 @@ public class AtkiGAClient extends TeamClient {
 			e.printStackTrace();
 		}
 		
-		
+		/***/
+		if(exportChromosomeData) {
+			try(BufferedWriter fOut = new BufferedWriter(new FileWriter(fitnessOut, fitnessOut.exists()))){
+				fOut.write(Integer.toString(lastKnownScore));
+				fOut.newLine();
+			} catch (IOException e) {
+				System.err.println("<BDSM_GA.shutDown> - Failed to write fitness data to file: "+e.getMessage());
+			}
+		}
 	}
 
 	/******************
@@ -423,7 +444,7 @@ public class AtkiGAClient extends TeamClient {
 	private void drawBlockedGrids() {
 		if(AgentUtils.SHOW_GRAPHICS) {
 			for(Vertex v: graph.getBlockedVertices()) {
-				SpacewarGraphics g = new TargetGraphics(BLOCKED_GRID_GRAPHIC_RADIUS, graph.getCentralCoordinate(v));
+				SpacewarGraphics g = new TargetGraphics(BLOCKED_GRID_GRAPHIC_RADIUS, AStarGraph.getCentralCoordinate(v));
 				graphicsToAdd.add(g);
 			}
 		}

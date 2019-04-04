@@ -44,23 +44,23 @@ public class AStarGraph {
 	}
 	
 	/**Vertices represented as 2D grid*/
-	private Vertex[][] vMtx;
+	private static Vertex[][] vMtx;
 	
 	/**Width/Height of vertex matrix*/
-	private int mtxCols, mtxRows;
+	private static int mtxCols, mtxRows;
 	
 	/**Size of one grid unit*/
 	public static final int GRID_SIZE = Asteroid.MAX_ASTEROID_RADIUS*2;
 	
 	/**Indicates whether to perform debug processes*/
-	private boolean debug;
+	private static boolean debug;
 	
 	/**Search tree from most recent plan*/
-	private LinkedList<AStarPath> searchTree;
-	private LinkedList<GBFSPath> searchTreeGBFS;
+	private static LinkedList<AStarPath> searchTree;
+	private static LinkedList<GBFSPath> searchTreeGBFS;
 	
 	/**Vertices marked as obstacles*/
-	private LinkedList<Vertex> blockedGrids;
+	private static LinkedList<Vertex> blockedGrids;
 	
 	/**
 	 * Constructor for graph. Window parameters and asteroid radius are required.
@@ -115,7 +115,7 @@ public class AStarGraph {
 	 * @param space {@link Toroidal2DPhysics} model
 	 * @return AStarPath object containing sequence of positions to travel to for optimal 
 	 */
-	public AStarPath getPathTo(Ship ship, AbstractObject target, Toroidal2DPhysics space) {
+	public static AStarPath getPathTo(Ship ship, AbstractObject target, Toroidal2DPhysics space) {
 		// Debug: clear previous search tree
 		if(debug) {
 			searchTree.clear();
@@ -141,7 +141,7 @@ public class AStarGraph {
 		PriorityQueue<AStarPath> fringeQ = new PriorityQueue<>();
 		HashMap<Vertex, Boolean> closed = new HashMap<>();
 		// Add start vertex to queue
-		fringeQ.add(AStarPath.makePath(this, vShip));
+		fringeQ.add(AStarPath.makePath(vShip));
 		// While queue is not empty and found is false
 		boolean found = false;
 		AStarPath bestSoFar = null;
@@ -189,7 +189,7 @@ public class AStarGraph {
 				for(Vertex child: thisPath.getCurrentVertex().getEdges()) {
 					// Only add child if it is not already closed
 					if(!closed.containsKey(child)) {
-						AStarPath childPath = AStarPath.duplicatePath(this, thisPath);
+						AStarPath childPath = AStarPath.duplicatePath(thisPath);
 						childPath.addVertex(child);
 						fringeQ.add(childPath);
 					}
@@ -204,7 +204,7 @@ public class AStarGraph {
 		return bestSoFar;
 	}
 	
-	public GBFSPath getPathToGBFS(Ship ship, AbstractObject target, Toroidal2DPhysics space) {
+	public static GBFSPath getPathToGBFS(Ship ship, AbstractObject target, Toroidal2DPhysics space) {
 		// Debug: clear previous search tree
 		if(debug) {
 			searchTreeGBFS.clear();
@@ -230,7 +230,7 @@ public class AStarGraph {
 		PriorityQueue<GBFSPath> frontierQ = new PriorityQueue<>();
 		HashMap<Vertex, Boolean> explored = new HashMap<>();
 		// Add start vertex to queue
-		frontierQ.add(GBFSPath.makePath(this, vShip));
+		frontierQ.add(GBFSPath.makePath(vShip));
 		// While queue is not empty and found is false
 		boolean found = false;
 		GBFSPath bestSoFar = null;
@@ -278,7 +278,7 @@ public class AStarGraph {
 				for(Vertex child: thisPath.getCurrentVertex().getEdges()) {
 					// Only add child if it is not already closed
 					if(!explored.containsKey(child)) {
-						GBFSPath childPath = GBFSPath.duplicatePath(this, thisPath);
+						GBFSPath childPath = GBFSPath.duplicatePath(thisPath);
 						childPath.addVertex(child);
 						frontierQ.add(childPath);
 					}
@@ -295,7 +295,7 @@ public class AStarGraph {
 	/**
 	 * Resets all heuristic values to 0
 	 */
-	private void clearHeuristics() {
+	private static void clearHeuristics() {
 		for(int r = 0; r < mtxRows; r++) {
 			for(int c = 0; c < mtxCols; c++) {
 				vMtx[r][c].clearHValue();
@@ -311,7 +311,7 @@ public class AStarGraph {
 	 * @param ship Ship checking for path
 	 * @param targetPosition Target's position
 	 */
-	private void setHeuristics(Toroidal2DPhysics space, Ship ship, AbstractObject target) {
+	private static void setHeuristics(Toroidal2DPhysics space, Ship ship, AbstractObject target) {
 		// Load all current obstructions (i.e. objects that are dangerous to the ship)
 		Set<AbstractObject> obstructions = new HashSet<>();
 		for(AbstractObject obj: space.getAllObjects()) {
@@ -364,7 +364,7 @@ public class AStarGraph {
 	 * @param pc central coordinate of vertex to check for obstacles
 	 * @return whether this vertex is clear of obstacles (true -> no obstacles)
 	 */
-	private boolean gridIsClearOfObstacles(Toroidal2DPhysics space, Set<AbstractObject> obstructions, Position pc) {
+	private static boolean gridIsClearOfObstacles(Toroidal2DPhysics space, Set<AbstractObject> obstructions, Position pc) {
 		int radius = GRID_SIZE*3/4;
 		for (AbstractObject object : obstructions) {
 			// fixed bug where it only checked radius and not diameter
@@ -381,7 +381,7 @@ public class AStarGraph {
 	 * @param v Vertex to find central coordinate of
 	 * @return Position object representing the center of a vertex grid square
 	 */
-	Position getCentralCoordinate(Vertex v) {
+	static Position getCentralCoordinate(Vertex v) {
 		return new Position(v.getMtxColumn()*GRID_SIZE + (GRID_SIZE/2), v.getMtxRow()*GRID_SIZE + (GRID_SIZE/2));
 	}
 	
@@ -391,7 +391,7 @@ public class AStarGraph {
 	 * @param p position to get vertex for
 	 * @return Vertex containing the position
 	 */
-	Vertex getVertex(Position p) {
+	static Vertex getVertex(Position p) {
 		int row = Math.min((int)p.getY() / GRID_SIZE, mtxRows - 1);
 		int col = Math.min((int)p.getX() / GRID_SIZE, mtxCols - 1);
 		try {
@@ -410,7 +410,7 @@ public class AStarGraph {
 	 * Gets the most recently planned search tree
 	 * @return Search tree from most recent call to getPathTo
 	 */
-	public LinkedList<AStarPath> getSearchTree(){
+	public static LinkedList<AStarPath> getSearchTree(){
 		return searchTree;
 	}
 	

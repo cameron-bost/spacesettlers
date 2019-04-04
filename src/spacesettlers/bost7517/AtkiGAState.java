@@ -116,6 +116,29 @@ public class AtkiGAState {
 			return false;
 		return true;
 	}
+	/**
+	 * Will re-determine the asteroid based on the optimalDistance Variable.
+	 * @param optimalDistance
+	 * @param space
+	 * @param myShip
+	 */
+	public void changeDistance(int optimalDistance,Toroidal2DPhysics space,Ship myShip) 
+	{
+		Set<Asteroid> asteroids = space.getAsteroids();
+		distanceToNearestMineableAsteroid = Integer.MAX_VALUE;
+		double distance;
+
+		for (Asteroid asteroid : asteroids) {
+			if (asteroid.isMineable()) {
+				distance = space.findShortestDistance(myShip.getPosition(), asteroid.getPosition());
+				if (distance < distanceToNearestMineableAsteroid && distance <= optimalDistance) {
+					System.out.println("<Found Asteroid>");
+					distanceToNearestMineableAsteroid = distance;
+					nearestMineableAsteroid = asteroid;
+				}
+			}
+		}
+	}
 
 
 

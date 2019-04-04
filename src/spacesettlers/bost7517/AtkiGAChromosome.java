@@ -4,7 +4,6 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.UUID;
 
-import com.thoughtworks.xstream.annotations.XStreamImplicit;
 import com.thoughtworks.xstream.annotations.XStreamOmitField;
 
 import spacesettlers.actions.AbstractAction;
@@ -54,11 +53,6 @@ public class AtkiGAChromosome {
 	private LinkedList<Position> pointsToVisit;
 	
 	/**
-	 * A* Graph, used for path-finding
-	 */
-	@XStreamOmitField
-	private AStarGraph graph;
-	/**
 	 * Current path being followed
 	 */
 	@XStreamOmitField
@@ -98,8 +92,7 @@ public class AtkiGAChromosome {
 	 * 
 	 * @param _graph Global A* graph object
 	 */
-	public AtkiGAChromosome(AStarGraph _graph) {
-		graph = _graph;
+	public AtkiGAChromosome() {
 		policy = new HashMap<AtkiGAState, AbstractAction>();
 		asteroidToShipMap = new HashMap<UUID, Ship>();
 		aimingForBase = new HashMap<UUID, Boolean>();
@@ -225,21 +218,20 @@ public class AtkiGAChromosome {
 	 * This will take in a graph 
 	 * @param graph
 	 */
-	public void setPolicy(AStarGraph graph)
+	public void setPolicy()
 	{
 		policy = new HashMap<AtkiGAState, AbstractAction>();
 		asteroidToShipMap = new HashMap<UUID, Ship>();
 		aimingForBase = new HashMap<UUID, Boolean>();
 		justHitBase = new HashMap<UUID, Boolean>();
-		this.graph = graph;
 	}
 	
 	void checkForPlan(Toroidal2DPhysics space, Ship myShip, AbstractObject target) {
 		if (timeSincePlan >= AgentUtils.PLAN_INTERVAL) {
 			currentAction = null;
 			timeSincePlan = 0;
-			currentPath = graph.getPathTo(myShip, target, space);
-			currentSearchTree = graph.getSearchTree();
+			currentPath = AStarGraph.getPathTo(myShip, target, space);
+			currentSearchTree = AStarGraph.getSearchTree();
 			pointsToVisit = currentPath.getPositions();
 		} else {
 			timeSincePlan++;

@@ -16,16 +16,12 @@ public class AStarPath implements Comparable<AStarPath>{
 	/**Total cost of the path*/
 	private int totalCost = 0;
 	
-	/**Graph object. Used for getting positions of vertices*/
-	private AStarGraph graph;
-	
 	/**
 	 * No constructor arguments
 	 */
-	private AStarPath(AStarGraph _graph) {
+	private AStarPath() {
 		totalCost = 0;
 		vertices = new LinkedList<>();
-		graph = _graph;
 	}
 	
 	/**
@@ -53,7 +49,7 @@ public class AStarPath implements Comparable<AStarPath>{
 	public LinkedList<Position> getPositions() {
 		LinkedList<Position> ret = new LinkedList<>();
 		for(Vertex v: vertices) {
-			ret.add(graph.getCentralCoordinate(v));
+			ret.add(AStarGraph.getCentralCoordinate(v));
 		}
 		return ret;
 	}
@@ -79,8 +75,8 @@ public class AStarPath implements Comparable<AStarPath>{
 	 * @param v initial vertex
 	 * @return Path object with v as initial vertex
 	 */
-	static AStarPath makePath(AStarGraph g, Vertex v) {
-		AStarPath ret = new AStarPath(g);
+	static AStarPath makePath(Vertex v) {
+		AStarPath ret = new AStarPath();
 		ret.addVertex(v);
 		return ret;
 	}
@@ -91,8 +87,8 @@ public class AStarPath implements Comparable<AStarPath>{
 	 * @param p path to duplicate
 	 * @return duplicate of parameter path
 	 */
-	static AStarPath duplicatePath(AStarGraph g, AStarPath p) {
-		AStarPath ret = new AStarPath(g);
+	static AStarPath duplicatePath(AStarPath p) {
+		AStarPath ret = new AStarPath();
 		for(Vertex v: p.vertices) {
 			ret.addVertex(v);
 		}

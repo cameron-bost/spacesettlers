@@ -2,8 +2,6 @@ package spacesettlers.bost7517;
 
 import java.util.Random;
 
-import com.thoughtworks.xstream.annotations.XStreamAlias;
-import com.thoughtworks.xstream.annotations.XStreamImplicit;
 import com.thoughtworks.xstream.annotations.XStreamOmitField;
 
 import spacesettlers.simulator.Toroidal2DPhysics;
@@ -27,25 +25,23 @@ public class AtkiGAPopulation {
 	
 	/**Shared Random object*/
 	private Random random;
-	private int populationSize;
 	
-	@XStreamOmitField
-	private AStarGraph graph;
+	private int populationSize;
 	
 	/**Chance of mutation (out of 1.0)*/
 	private static double pMutation = 0.10;
 	/**Chance of crossover (out of 1.0)*/
 	private static double pCrossover = 0.10;
+	
+	private double currentScore;
 
 	/**
 	 * Make a new empty population
 	 */
-	public AtkiGAPopulation(int populationSize, AStarGraph _graph, Random _random) {
+	public AtkiGAPopulation(int populationSize, Random _random) {
 		super();
-		
 		this.populationSize = populationSize;
 		random = _random;
-		graph = _graph;
 		// start at member zero
 		currentPopulationCounter = 0;
 		
@@ -53,7 +49,7 @@ public class AtkiGAPopulation {
 		population = new AtkiGAChromosome[populationSize];
 		
 		for (int i = 0; i < populationSize; i++) {
-			population[i] = new AtkiGAChromosome(_graph);
+			population[i] = new AtkiGAChromosome();
 		}
 		
 		// make space for the fitness scores
@@ -67,6 +63,7 @@ public class AtkiGAPopulation {
 	 */
 	public void evaluateFitnessForCurrentMember(Toroidal2DPhysics space) {
 		fitnessScores[currentPopulationCounter] = 0;
+		
 	}
 
 	/**
@@ -210,9 +207,12 @@ public class AtkiGAPopulation {
 	 * returns the current population size.
 	 * @return
 	 */
-	public int getCurrentPopulation()
-	{
+	public int getCurrentPopulation(){
 		return population.length;
+	}
+
+	public void updateScore(double d) {
+		this.currentScore = d;
 	}
 	
 }

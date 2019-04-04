@@ -10,17 +10,13 @@ public class GBFSPath implements Comparable<GBFSPath>{
 	
 	/**Total cost of the path*/
 	private int totalCost = 0;
-	
-	/**Graph object. Used for getting positions of vertices*/
-	private AStarGraph graph;
-	
+		
 	/**
 	 * No constructor arguments
 	 */
-	private GBFSPath(AStarGraph _graph) {
+	private GBFSPath() {
 		totalCost = 0;
 		vertices = new LinkedList<>();
-		graph = _graph;
 	}
 	
 	/**
@@ -48,7 +44,7 @@ public class GBFSPath implements Comparable<GBFSPath>{
 	public LinkedList<Position> getPositions() {
 		LinkedList<Position> ret = new LinkedList<>();
 		for(Vertex v: vertices) {
-			ret.add(graph.getCentralCoordinate(v));
+			ret.add(AStarGraph.getCentralCoordinate(v));
 		}
 		return ret;
 	}
@@ -74,8 +70,8 @@ public class GBFSPath implements Comparable<GBFSPath>{
 	 * @param v initial vertex
 	 * @return Path object with v as initial vertex
 	 */
-	static GBFSPath makePath(AStarGraph g, Vertex v) {
-		GBFSPath ret = new GBFSPath(g);
+	static GBFSPath makePath(Vertex v) {
+		GBFSPath ret = new GBFSPath();
 		ret.addVertex(v);
 		return ret;
 	}
@@ -86,8 +82,8 @@ public class GBFSPath implements Comparable<GBFSPath>{
 	 * @param p path to duplicate
 	 * @return duplicate of parameter path
 	 */
-	static GBFSPath duplicatePath(AStarGraph g, GBFSPath p) {
-		GBFSPath ret = new GBFSPath(g);
+	static GBFSPath duplicatePath(GBFSPath p) {
+		GBFSPath ret = new GBFSPath();
 		for(Vertex v: p.vertices) {
 			ret.addVertex(v);
 		}

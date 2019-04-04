@@ -3,7 +3,6 @@ package spacesettlers.bost7517;
 import java.awt.Color;
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -198,14 +197,14 @@ public class AtkiGAClient extends TeamClient {
 			{
 				for(int i = 0; i < population.getCurrentPopulation() ; i++)
 				{
-					population.getMember(i).setPolicy(graph);
+					population.getMember(i).setPolicy();
 				}
 			}
 			else
 			{
 				for(int i = 0; i < populationSize; i++)
 				{
-					population.getMember(i).setPolicy(graph);
+					population.getMember(i).setPolicy();
 				}
 			}
 		
@@ -213,7 +212,7 @@ public class AtkiGAClient extends TeamClient {
 			// if you get an error, handle it other than a null pointer because
 			// the error will happen the first time you run
 			System.out.println("No existing population found - starting a new one from scratch");
-			population = new AtkiGAPopulation(populationSize, graph, random);
+			population = new AtkiGAPopulation(populationSize, random);
 		}
 		currentPolicy = population.getFirstMember();
 	}
@@ -423,7 +422,7 @@ public class AtkiGAClient extends TeamClient {
 	private void drawBlockedGrids() {
 		if(AgentUtils.SHOW_GRAPHICS) {
 			for(Vertex v: graph.getBlockedVertices()) {
-				SpacewarGraphics g = new TargetGraphics(BLOCKED_GRID_GRAPHIC_RADIUS, graph.getCentralCoordinate(v));
+				SpacewarGraphics g = new TargetGraphics(BLOCKED_GRID_GRAPHIC_RADIUS, AStarGraph.getCentralCoordinate(v));
 				graphicsToAdd.add(g);
 			}
 		}

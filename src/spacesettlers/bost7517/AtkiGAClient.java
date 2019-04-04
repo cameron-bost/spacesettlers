@@ -54,6 +54,11 @@ public class AtkiGAClient extends TeamClient {
 	private boolean exportChromosomeData = true;
 	private final String fitnessOutFileName = "bdsm_fit_results.csv";
 	private final File fitnessOut = Paths.get(fitnessOutFileName).toFile();
+	
+	/**
+	 * How large of a population to evaluate
+	 */
+	private static final int POPULATION_SIZE = 10;
 	/**
 	 * Set of graphics to be displayed. Generated during each timestep.
 	 */
@@ -77,11 +82,6 @@ public class AtkiGAClient extends TeamClient {
 	 * How many steps each policy is evaluated for before moving to the next one
 	 */
 	static final int EVALUATION_STEPS = 5000;
-	
-	/**
-	 * How large of a population to evaluate
-	 */
-	private int populationSize = 15;
 	
 	/**
 	 * Current step
@@ -184,7 +184,7 @@ public class AtkiGAClient extends TeamClient {
 			// if you get an error, handle it other than a null pointer because
 			// the error will happen the first time you run
 			System.out.println("No existing population found - starting a new one from scratch");
-			population = new AtkiGAPopulation(populationSize, random);
+			population = new AtkiGAPopulation(POPULATION_SIZE, random);
 		}
 		currentPolicy = population.getCurrentMember();
 	}

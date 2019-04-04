@@ -1,5 +1,10 @@
 package spacesettlers.bost7517;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.LinkedList;
 import java.util.Random;
 
@@ -15,6 +20,10 @@ import spacesettlers.simulator.Toroidal2DPhysics;
  *
  */
 public class AtkiGAPopulation {
+	
+	private boolean doExport = false;
+	
+	private final File fitnessOutPop = Paths.get("fitness_per_gen.csv").toFile();
 	
 	/**Population as array of chromosomes*/
 	private AtkiGAChromosome[] population;
@@ -97,6 +106,21 @@ public class AtkiGAPopulation {
 		if(AgentUtils.DEBUG) {
 			System.out.println("<BDSM.makeGeneration> - *************** NEW GENERATION ****************");
 		}
+		// If needed, highest population value is output to file.
+		if(doExport) {
+			double maxFit = -1;
+			for(double d: fitnessScores) {
+				if(d > maxFit) {
+					maxFit = d;
+				}
+			}
+			try(BufferedWriter fOut = new BufferedWriter(new FileWriter(fitnessOutPop, fitnessOutPop.exists()))){
+				fOut.write(Double.toString(maxFit));
+				fOut.newLine();
+			} catch (IOException e) {
+				System.err.println("<BDSM_GA.shutDown> - Failed to write fitness data to file: "+e.getMessage());
+			}
+		}
 		AtkiGAChromosome[] newPopulation = new AtkiGAChromosome[populationSize];
 
 		// Selection
@@ -117,6 +141,7 @@ public class AtkiGAPopulation {
 		}
 		
 		population = newPopulation;
+		
 		// Reset population counter
 		currentPopulationIndex = 0;
 	}

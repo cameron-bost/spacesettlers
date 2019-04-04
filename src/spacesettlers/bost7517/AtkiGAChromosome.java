@@ -2,6 +2,7 @@ package spacesettlers.bost7517;
 
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.Random;
 import java.util.UUID;
 
 import com.thoughtworks.xstream.annotations.XStreamOmitField;
@@ -83,20 +84,33 @@ public class AtkiGAChromosome {
 	 */
 	
 	/**
-	 * this value is TBD
+	 * Gene 1: Optimal total distance from ship to asteroid to base.
 	 */
-	private double optimalDistance;
+	private int optimalDistance;
+	/**Mutation step amount for optimal distance*/
+	private static final int mStep_optimalDistance = 5;
+	private static final int UPPERBOUND_OPTIMAL_DISTANCE = 2000;
 	
 	/**
 	 * Chromosome constructor, global graph object is required argument.
+	 * @param _random 
 	 * 
 	 * @param _graph Global A* graph object
 	 */
-	public AtkiGAChromosome() {
-		policy = new HashMap<AtkiGAState, AbstractAction>();
-		asteroidToShipMap = new HashMap<UUID, Ship>();
-		aimingForBase = new HashMap<UUID, Boolean>();
-		justHitBase = new HashMap<UUID, Boolean>();
+	public AtkiGAChromosome(Random _random) {
+		initFields();
+		setRandomGeneValues(_random);
+	}
+	
+	private void setRandomGeneValues(Random random) {
+		optimalDistance = (random.nextInt(UPPERBOUND_OPTIMAL_DISTANCE/5)+1)*5;
+		if(AgentUtils.DEBUG) {
+			System.out.println("Creating new chromosome w/ optimalDistance="+optimalDistance);
+		}
+	}
+
+	private AtkiGAChromosome(double _optimalDistance) {
+		initFields();
 	}
 
 	/**
@@ -110,6 +124,11 @@ public class AtkiGAChromosome {
 	 */
 	public AbstractAction getCurrentAction(Toroidal2DPhysics space, Ship myShip, AtkiGAState currentState,
 			int policyNumber) {
+		// If new game, some variables will be null, so we reset them.
+		if(policy == null) {
+			initFields();
+		}
+		
 		// If policy does not contain this state, determine correct action then add to policy
 
 		if (!policy.containsKey(currentState)) {
@@ -218,7 +237,7 @@ public class AtkiGAChromosome {
 	 * This will take in a graph 
 	 * @param graph
 	 */
-	public void setPolicy()
+	public void initFields()
 	{
 		policy = new HashMap<AtkiGAState, AbstractAction>();
 		asteroidToShipMap = new HashMap<UUID, Ship>();
@@ -261,5 +280,25 @@ public class AtkiGAChromosome {
 	 */
 	public void currentPolicyUpdateTime() {
 		timeSincePlan = timeSincePlan + 1;
+	}
+
+	/**
+	 * Mutates this chromosome.
+	 */
+	public void mutate(Random random) {
+		optimalDistance += (random.nextDouble() <= 0.5 ? -1 : 1) * mStep_optimalDistance;
+	}
+
+	/**
+	 * Performs uniform crossover of two chromosomes without changing either. Returns child.
+	 * 
+	 * @param p1 First parent
+	 * @param p2 Second parent
+	 * @param random Random number generator
+	 * @return Child of the two parents
+	 */
+	public static AtkiGAChromosome doCrossover(AtkiGAChromosome p1, AtkiGAChromosome p2, Random random) {
+		double optimalDistance = (random.nextDouble() <= 0.5 ? p1.optimalDistance : p2.optimalDistance);
+		return new AtkiGAChromosome(optimalDistance);
 	}
 }

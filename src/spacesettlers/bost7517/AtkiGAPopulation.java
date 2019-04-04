@@ -1,8 +1,7 @@
 package spacesettlers.bost7517;
 
+import java.util.LinkedList;
 import java.util.Random;
-
-import com.thoughtworks.xstream.annotations.XStreamOmitField;
 
 import spacesettlers.simulator.Toroidal2DPhysics;
 
@@ -17,21 +16,23 @@ import spacesettlers.simulator.Toroidal2DPhysics;
  */
 public class AtkiGAPopulation {
 	
+	/**Population as array of chromosomes*/
 	private AtkiGAChromosome[] population;
 	
-	private int currentPopulationCounter;
+	/**Current number of members in the population*/
+	private int currentPopulationIndex;
 	
+	/**Data structure for fitness score of every chromosome*/
 	private double[] fitnessScores;
 	
 	/**Shared Random object*/
 	private Random random;
 	
+	/**Fixed population size.*/
 	private int populationSize;
 	
 	/**Chance of mutation (out of 1.0)*/
 	private static double pMutation = 0.10;
-	/**Chance of crossover (out of 1.0)*/
-	private static double pCrossover = 0.10;
 	
 	private double currentScore;
 
@@ -43,13 +44,13 @@ public class AtkiGAPopulation {
 		this.populationSize = populationSize;
 		random = _random;
 		// start at member zero
-		currentPopulationCounter = 0;
+		currentPopulationIndex = 0;
 		
 		// make an empty population
 		population = new AtkiGAChromosome[populationSize];
 		
 		for (int i = 0; i < populationSize; i++) {
-			population[i] = new AtkiGAChromosome();
+			population[i] = new AtkiGAChromosome(_random);
 		}
 		
 		// make space for the fitness scores
@@ -57,13 +58,12 @@ public class AtkiGAPopulation {
 	}
 
 	/**
-	 * Currently scores all members as zero (the student must implement this!)
+	 * Score is updated by the client class
 	 * 
 	 * @param space
 	 */
 	public void evaluateFitnessForCurrentMember(Toroidal2DPhysics space) {
-		fitnessScores[currentPopulationCounter] = 0;
-		
+		fitnessScores[currentPopulationIndex] = currentScore;
 	}
 
 	/**
@@ -72,7 +72,7 @@ public class AtkiGAPopulation {
 	 * @return
 	 */
 	public boolean isGenerationFinished() {
-		if (currentPopulationCounter == population.length) {
+		if (currentPopulationIndex == populationSize) {
 			return true;
 		} else {
 			return false;
@@ -86,49 +86,45 @@ public class AtkiGAPopulation {
 	 * @return
 	 */
 	public AtkiGAChromosome getNextMember() {
-		currentPopulationCounter++;
-		
-		return population[currentPopulationCounter % population.length];
+		currentPopulationIndex++;
+		return population[currentPopulationIndex % populationSize];
 	}
 
 	/**
 	 * Does crossover, selection, and mutation using our current population.
 	 */
 	public void makeNextGeneration() {
+		AtkiGAChromosome[] newPopulation = new AtkiGAChromosome[populationSize];
+
 		// Selection
 		population = doSelection(population);
 		
 		// Shuffle population before continuing
 		shufflePopulation();
-		
-		// Crossover
-		for(int idx = 1; idx < currentPopulationCounter; idx++) {
-			if (random.nextDouble() <= pCrossover) {
-				/**
-				 * TODO: This crossover implementation is incorrect. 
-				 * Should add child to list, not replace one of the parents.
-				 */
-				population[idx] = doCrossover(population[idx], population[idx-1]);
-			}
+		// Crossover, choose 2 random parents for each new chromosome.
+		for(int idx = 0; idx < populationSize; idx++) {
+			int p1 = random.nextInt(population.length);
+			int p2 = random.nextInt(population.length);
+			newPopulation[idx] = AtkiGAChromosome.doCrossover(population[p1], population[p2], random);
 		}
 		
 		// Mutation
-		for(int idx = 0; idx < currentPopulationCounter; idx++) {
+		for(int idx = 0; idx < populationSize; idx++) {
 			if (random.nextDouble() <= pMutation) {
-				population[idx] = doMutate(population[idx]);
+				newPopulation[idx].mutate(random);
 			}
 		}
-		
+		population = newPopulation;
 		// Reset population counter
-		currentPopulationCounter = 0;
+		currentPopulationIndex = 0;
 	}
 	
 	/**
 	 * Shuffles population array, leaving any null values at end of array
 	 */
 	void shufflePopulation() {
-		int nullIdx = currentPopulationCounter;
-		for(int i = currentPopulationCounter; i >= 1; i--) {
+		int nullIdx = currentPopulationIndex;
+		for(int i = currentPopulationIndex; i >= 1; i--) {
 			// Move null items (should be on the end).
 			if(population[i] == null) {
 				if(nullIdx != i) {
@@ -152,29 +148,6 @@ public class AtkiGAPopulation {
 	}
 	
 	/**
-	 * Performs crossover on two chromosomes, returns new chromosome.
-	 *  
-	 * @param p1 Parent 1
-	 * @param p2 Parent 2
-	 * @return Crossover child from parameter values
-	 */
-	private static AtkiGAChromosome doCrossover(AtkiGAChromosome p1, AtkiGAChromosome p2) {
-		// TODO: implement: gene is average of p1,p2
-		return null;
-	}
-	
-	/**
-	 * Performs mutation on chromosome, returns new chromosome.
-	 * 
-	 * @param p Chromosome to mutate
-	 * @return Mutated chromosome
-	 */
-	private static AtkiGAChromosome doMutate(AtkiGAChromosome p) {
-		// TODO: set step amount, mutation chance
-		return p;
-	}
-	
-	/**
 	 * Performs selection on population, removes individuals that 
 	 * are not selected. Removed individuals are represented as 
 	 * "null" in the population data structure.
@@ -182,9 +155,28 @@ public class AtkiGAPopulation {
 	 * @param population current population
 	 * @return Population after selection
 	 */
-	private static AtkiGAChromosome[] doSelection(AtkiGAChromosome[] population){
-		// TODO: determine/implement selection method (e.g. roulette, tournament)
-		return population;
+	private AtkiGAChromosome[] doSelection(AtkiGAChromosome[] population){
+		/**
+		 * Tournament
+		 * - Select 3 individuals, only best moves on
+		 */
+		int tournamentSize = 3;
+		LinkedList<AtkiGAChromosome> ret = new LinkedList<>();
+		shufflePopulation();
+		for(int i = 2; i < population.length; i+=tournamentSize) {
+			// Get best chromosome for this tournament
+			AtkiGAChromosome bestOne = null;
+			double bestFitness = Double.MIN_VALUE;
+			for(int j = 0; j < tournamentSize; j++) {
+				int chIdx = i - j;
+				if(fitnessScores[chIdx] > bestFitness) {
+					bestFitness = fitnessScores[chIdx];
+					bestOne = population[chIdx];
+				}
+			}
+			ret.add(bestOne);
+		}
+		return ret.toArray(new AtkiGAChromosome[ret.size()]);
 	}
 
 	/**

@@ -54,6 +54,11 @@ public class AtkiGAClient extends TeamClient {
 	private boolean exportChromosomeData = true;
 	private final String fitnessOutFileName = "bdsm_fit_results.csv";
 	private final File fitnessOut = Paths.get(fitnessOutFileName).toFile();
+	
+	/**
+	 * How large of a population to evaluate
+	 */
+	private static final int POPULATION_SIZE = 10;
 	/**
 	 * Set of graphics to be displayed. Generated during each timestep.
 	 */
@@ -77,11 +82,6 @@ public class AtkiGAClient extends TeamClient {
 	 * How many steps each policy is evaluated for before moving to the next one
 	 */
 	static final int EVALUATION_STEPS = 5000;
-	
-	/**
-	 * How large of a population to evaluate
-	 */
-	private int populationSize = 15;
 	
 	/**
 	 * Current step
@@ -110,33 +110,8 @@ public class AtkiGAClient extends TeamClient {
 			if (actionable instanceof Ship) {
 				Ship ship = (Ship) actionable;
 				
-				// Default action is ship's current action
-				AbstractAction action = ship.getCurrentAction();
 				
-				// Determine policy number (default 0 - no policy)
-				int policyNumber = 0;
-				
-				// Policy 1: if energy is low, target energy beacon
-				if ((ship.getEnergy() < AgentUtils.LOW_ENERGY_THRESHOLD)) {
-					policyNumber = 1;			
-				}
-				
-				// Policy 2: if on-board resources are high, target base 
-				else if (ship.getResources().getTotal() > AgentUtils.RESOURCE_THRESHOLD) {
-					policyNumber = 2;	
-				}
-				
-				// Policy 3: if current action is done (or null), target nearest asteroid
-				else if (ship.getCurrentAction() == null || ship.getCurrentAction().isMovementFinished(space)) {
-					policyNumber = 3;
-				}
-				
-				// If a policy was selected, get corresponding action
-				if(policyNumber != 0) {
-					AtkiGAState currentState = new AtkiGAState(space, ship);
-					
-					action = currentPolicy.getCurrentAction(space, ship, currentState, policyNumber);
-				}
+				AbstractAction action = currentPolicy.getCurrentAction(space, ship);
 				
 				// Commit action for this ship.
 				actions.put(ship.getId(), action);
@@ -203,32 +178,15 @@ public class AtkiGAClient extends TeamClient {
 		// try to load the population from the existing saved file.  If that fails, start from scratch
 		try { 
 			population = (AtkiGAPopulation) xstream.fromXML(new File(getKnowledgeFile()));
-		
-			/*
-			 * Re sets the each populations chromosome policy variables.
-			 */
-			if(population.getCurrentPopulation() > populationSize) 
-			{
-				for(int i = 0; i < population.getCurrentPopulation() ; i++)
-				{
-					population.getMember(i).initFields();
-				}
-			}
-			else
-			{
-				for(int i = 0; i < populationSize; i++)
-				{
-					population.getMember(i).initFields();
-				}
-			}
+			population.initMembers();
 		
 		} catch (XStreamException e) {
 			// if you get an error, handle it other than a null pointer because
 			// the error will happen the first time you run
 			System.out.println("No existing population found - starting a new one from scratch");
-			population = new AtkiGAPopulation(populationSize, random);
+			population = new AtkiGAPopulation(POPULATION_SIZE, random);
 		}
-		currentPolicy = population.getFirstMember();
+		currentPolicy = population.getCurrentMember();
 	}
 
 	@Override

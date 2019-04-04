@@ -1,5 +1,10 @@
 package spacesettlers.bost7517;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.LinkedList;
 import java.util.Random;
 
@@ -15,6 +20,10 @@ import spacesettlers.simulator.Toroidal2DPhysics;
  *
  */
 public class AtkiGAPopulation {
+	
+	private boolean doExport = false;
+	
+	private final File fitnessOutPop = Paths.get("fitness_per_gen.csv").toFile();
 	
 	/**Population as array of chromosomes*/
 	private AtkiGAChromosome[] population;
@@ -94,13 +103,29 @@ public class AtkiGAPopulation {
 	 * Does crossover, selection, and mutation using our current population.
 	 */
 	public void makeNextGeneration() {
+		if(AgentUtils.DEBUG) {
+			System.out.println("<BDSM.makeGeneration> - *************** NEW GENERATION ****************");
+		}
+		// If needed, highest population value is output to file.
+		if(doExport) {
+			double maxFit = -1;
+			for(double d: fitnessScores) {
+				if(d > maxFit) {
+					maxFit = d;
+				}
+			}
+			try(BufferedWriter fOut = new BufferedWriter(new FileWriter(fitnessOutPop, fitnessOutPop.exists()))){
+				fOut.write(Double.toString(maxFit));
+				fOut.newLine();
+			} catch (IOException e) {
+				System.err.println("<BDSM_GA.shutDown> - Failed to write fitness data to file: "+e.getMessage());
+			}
+		}
 		AtkiGAChromosome[] newPopulation = new AtkiGAChromosome[populationSize];
 
 		// Selection
 		population = doSelection(population);
 		
-		// Shuffle population before continuing
-		shufflePopulation();
 		// Crossover, choose 2 random parents for each new chromosome.
 		for(int idx = 0; idx < populationSize; idx++) {
 			int p1 = random.nextInt(population.length);
@@ -114,33 +139,31 @@ public class AtkiGAPopulation {
 				newPopulation[idx].mutate(random);
 			}
 		}
+		
 		population = newPopulation;
+		
 		// Reset population counter
 		currentPopulationIndex = 0;
 	}
 	
 	/**
-	 * Shuffles population array, leaving any null values at end of array
+	 * Shuffles population array
 	 */
 	void shufflePopulation() {
-		int nullIdx = currentPopulationIndex;
-		for(int i = currentPopulationIndex; i >= 1; i--) {
-			// Move null items (should be on the end).
-			if(population[i] == null) {
-				if(nullIdx != i) {
-					swapChromosomes(i, nullIdx--);
-				}
-				continue;
-			}
-			else {
-				// destination index <= random location from [0, i]
-				int destIdx = random.nextInt(i+1);
-				// Swap [i] with [destination index]
-				swapChromosomes(i, destIdx);
-			}
+		for(int i = populationSize - 1; i >= 1; i--) {
+			// destination index <= random location from [0, i]
+			int destIdx = random.nextInt(i+1);
+			// Swap [i] with [destination index]
+			swapChromosomes(i, destIdx);
 		}
 	}
 	
+	/**
+	 * Swaps two elements of the population array.
+	 * 
+	 * @param idxA first element
+	 * @param idxB second element
+	 */
 	void swapChromosomes(int idxA, int idxB) {
 		AtkiGAChromosome t = population[idxA];
 		population[idxA] = population[idxB];
@@ -158,7 +181,7 @@ public class AtkiGAPopulation {
 	private AtkiGAChromosome[] doSelection(AtkiGAChromosome[] population){
 		/**
 		 * Tournament
-		 * - Select 3 individuals, only best moves on
+		 * - Select 3 individuals, only keep the best one
 		 */
 		int tournamentSize = 3;
 		LinkedList<AtkiGAChromosome> ret = new LinkedList<>();
@@ -166,12 +189,11 @@ public class AtkiGAPopulation {
 		for(int i = 2; i < population.length; i+=tournamentSize) {
 			// Get best chromosome for this tournament
 			AtkiGAChromosome bestOne = null;
-			double bestFitness = Double.MIN_VALUE;
-			for(int j = 0; j < tournamentSize; j++) {
-				int chIdx = i - j;
-				if(fitnessScores[chIdx] > bestFitness) {
-					bestFitness = fitnessScores[chIdx];
-					bestOne = population[chIdx];
+			double bestFitness = -1;
+			for(int j = i; j >= i-2; j--) {
+				if(fitnessScores[j] >= bestFitness) {
+					bestFitness = fitnessScores[j];
+					bestOne = population[j];
 				}
 			}
 			ret.add(bestOne);
@@ -205,6 +227,17 @@ public class AtkiGAPopulation {
 
 	public void updateScore(double d) {
 		this.currentScore = d;
+	}
+
+	public AtkiGAChromosome getCurrentMember() {
+		currentPopulationIndex %= populationSize;
+		return population[currentPopulationIndex];
+	}
+
+	public void initMembers() {
+		for(int i = 0; i < population.length; i++) {
+			population[i].initFields();
+		}
 	}
 	
 }

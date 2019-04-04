@@ -256,4 +256,29 @@ public class AgentUtils {
 				);
 	}
 
+
+	public static Asteroid getBestAsteroidWtOptDist(Toroidal2DPhysics space, Ship myShip, double optDist) {
+		Asteroid nearestMineableAsteroid = null;
+		Set<Asteroid> asteroids = space.getAsteroids();
+		int lowestDistance = Integer.MAX_VALUE;
+		/**For each base belonging to this team.*/
+		for (Base base: space.getBases()) {
+			if(base.getTeamName().equals(myShip.getTeamName())) {
+				/**For each mineable asteroid*/
+				for (Asteroid asteroid : asteroids) {
+					if (asteroid.isMineable()) {
+						int distance = (int) (space.findShortestDistance(myShip.getPosition(), asteroid.getPosition())
+								+ space.findShortestDistance(asteroid.getPosition(), base.getPosition()));
+						int diff = Math.abs((int)distance - (int)optDist);
+						if (diff < lowestDistance) {
+							lowestDistance = distance;
+							nearestMineableAsteroid = asteroid;
+						}
+					}
+				}
+			}
+		}
+		return nearestMineableAsteroid;
+	}
+
 }

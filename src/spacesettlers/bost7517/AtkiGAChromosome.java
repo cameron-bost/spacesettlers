@@ -87,21 +87,21 @@ public class AtkiGAChromosome {
 	 * Gene 1: Optimal total distance from ship to asteroid to base.
 	 */
 	private int optimalDistance;
-	private static final int mStep_optimalDistance = 5;
+	private static final double mStep_optimalDistance = 0.15;
 	private static final int upperBound_optimalDistance = 2000;
 	
 	/**
 	 * Gene 2: Low energy amount
 	 */
 	private int lowEnergyThreshold;
-	private static final int mStep_lowEnergyThreshold = 50;
+	private static final double mStep_lowEnergyThreshold = 0.15;
 	private static final int upperBound_lowEnergyThreshold = 5000;
 	
 	/**
 	 * Gene 2: Resource Capacity Before Base
 	 */
 	private int resourceThreshold;
-	private static final int mStep_resourceThreshold = 50;
+	private static final double mStep_resourceThreshold = 0.15;
 	private static final int upperBound_resourceThreshold = 8000;
 	
 	/**
@@ -116,9 +116,9 @@ public class AtkiGAChromosome {
 	}
 	
 	private void setRandomGeneValues(Random random) {
-		optimalDistance = (random.nextInt(upperBound_optimalDistance/mStep_optimalDistance)+1)*mStep_optimalDistance;
-		lowEnergyThreshold = (random.nextInt(upperBound_lowEnergyThreshold/mStep_lowEnergyThreshold)+1)*mStep_lowEnergyThreshold;
-		resourceThreshold = (random.nextInt(upperBound_resourceThreshold/mStep_resourceThreshold)+1)*mStep_resourceThreshold;
+		optimalDistance = (random.nextInt(upperBound_optimalDistance)+1);
+		lowEnergyThreshold = (random.nextInt(upperBound_lowEnergyThreshold)+1);
+		resourceThreshold = (random.nextInt(upperBound_resourceThreshold)+1);
 		if(AgentUtils.DEBUG) {
 			System.out.println("Creating new chromosome w/:"
 					+ "\n\toptimalDistance="+optimalDistance
@@ -335,26 +335,26 @@ public class AtkiGAChromosome {
 	public void mutate(Random random) {
 		// Mutate optimal distance
 		double r = random.nextDouble();
-		optimalDistance += (r <= 0.5 ? r <= 0.25 ? -1 : 1 : 0) * mStep_optimalDistance;
+		optimalDistance *= (double)(1.0+(r <= 0.5 ? r <= 0.25 ? -1 : 1 : 0) * mStep_optimalDistance);
 		if(optimalDistance > upperBound_optimalDistance) {
 			optimalDistance = upperBound_optimalDistance;
 		}
 		// Mutate low energy threshold
 		r = random.nextDouble();
-		lowEnergyThreshold += (r <= 0.5 ? r <= 0.25 ? -1 : 1 : 0) * mStep_lowEnergyThreshold;
+		lowEnergyThreshold *= (double)(1.0+(r <= 0.5 ? r <= 0.25 ? -1 : 1 : 0) * mStep_lowEnergyThreshold);
 		if(optimalDistance > upperBound_lowEnergyThreshold) {
 			optimalDistance = upperBound_lowEnergyThreshold;
 		}
 		// Mutate resource threshold
 		r = random.nextDouble();
-		resourceThreshold += (r <= 0.5 ? r <= 0.25 ? -1 : 1 : 0) * mStep_resourceThreshold;
+		resourceThreshold *= (double)(1.0+(r <= 0.5 ? r <= 0.25 ? -1 : 1 : 0) * mStep_resourceThreshold);
 		if(optimalDistance > upperBound_resourceThreshold) {
 			optimalDistance = upperBound_resourceThreshold;
 		}
 	}
 
 	/**
-	 * Performs uniform crossover of two chromosomes without changing either. Returns child.
+	 * Performs 
 	 * 
 	 * @param p1 First parent
 	 * @param p2 Second parent
@@ -362,9 +362,10 @@ public class AtkiGAChromosome {
 	 * @return Child of the two parents
 	 */
 	public static AtkiGAChromosome doCrossover(AtkiGAChromosome p1, AtkiGAChromosome p2, Random random) {
-		int optimalDistance = (random.nextDouble() <= 0.5 ? p1.optimalDistance : p2.optimalDistance);
-		int lowEnergyThreshold = (random.nextDouble() <= 0.5 ? p1.lowEnergyThreshold : p2.lowEnergyThreshold);
-		int resourceThreshold = (random.nextDouble() <= 0.5 ? p1.resourceThreshold : p2.resourceThreshold);
+double prob = p1.optimalDistance/(p1.optimalDistance+p2.optimalDistance);
+		int optimalDistance = (random.nextDouble() <= prob ? p1.optimalDistance : p2.optimalDistance);
+		int lowEnergyThreshold = (random.nextDouble() <= prob ? p1.lowEnergyThreshold : p2.lowEnergyThreshold);
+		int resourceThreshold = (random.nextDouble() <= prob ? p1.resourceThreshold : p2.resourceThreshold);
 		return new AtkiGAChromosome(optimalDistance, lowEnergyThreshold, resourceThreshold);
 	}
 }

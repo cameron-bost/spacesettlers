@@ -178,13 +178,7 @@ public class AtkiGAClient extends TeamClient {
 		// try to load the population from the existing saved file.  If that fails, start from scratch
 		try { 
 			population = (AtkiGAPopulation) xstream.fromXML(new File(getKnowledgeFile()));
-			
-			/*
-			 * Re sets the each populations chromosome policy variables.
-			 */
-			for(int i = 0; i < populationSize; i++) {
-				population.getMember(i).initFields();
-			}
+			population.initMembers();
 		
 		} catch (XStreamException e) {
 			// if you get an error, handle it other than a null pointer because

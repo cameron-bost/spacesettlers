@@ -148,6 +148,9 @@ public class AtkiGAChromosome {
 	public AbstractAction getCurrentAction(Toroidal2DPhysics space, Ship myShip) {
 		// If new game, some variables will be null, so we reset them.
 		if(policy == null) {
+			if(AgentUtils.DEBUG) {
+				System.out.println("<Chromosome> - Initializing fields.");
+			}
 			initFields();
 		}
 		
@@ -156,22 +159,34 @@ public class AtkiGAChromosome {
 		
 		// If policy does not contain this state, determine correct action then add to policy
 		if (!policy.containsKey(currentState)) {
+			if(AgentUtils.DEBUG) {
+				System.out.println("<Chromosome> - Policy does not contain state.");
+			}
 			// Default action is currentAction
 			currentAction = myShip.getCurrentAction();
-			policy.put(currentState, currentAction);
+//			policy.put(currentState, currentAction);
 			// Policy 1: if energy is low, target energy beacon
 			if ((myShip.getEnergy() < lowEnergyThreshold)) {
+				if(AgentUtils.DEBUG) {
+					System.out.println("<Chromosome> - Policy 1: Energy is low, getting energy.");
+				}
 				if (currentState.getEnergySource() != null) {
 					checkForPlan(space, myShip, currentState.getEnergySource());
 
 					// Want to make sure not to interrupt an a* move that has not finished yet.
 					if (currentAction != null && !currentAction.isMovementFinished(space)) // checks if the object has stopped moving
 					{
+						if(AgentUtils.DEBUG) {
+							System.out.println("<Chromosome> - A* is not finished yet, continuing action...");
+						}
 						return currentAction;
 					}
 					// Call points to create a new action to move to that object.
 					if (pointsToVisit != null) {
 						if (!pointsToVisit.isEmpty()) {
+							if(AgentUtils.DEBUG) {
+								System.out.println("<Chromosome> - Adding next position in path to ship.");
+							}
 							Position newPosition = new Position(pointsToVisit.getFirst().getX(),
 									pointsToVisit.getFirst().getY());
 							policy.put(currentState, new BDSMMoveAction(space, myShip.getPosition(), newPosition));
@@ -188,17 +203,26 @@ public class AtkiGAChromosome {
 
 			// Policy 2: if on-board resources are high, target base 
 			else if (myShip.getResources().getTotal() > resourceThreshold) {
+				if(AgentUtils.DEBUG) {
+					System.out.println("<Chromosome> - Policy 2: We hefty on $$$, going home.");
+				}
 				checkForPlan(space, myShip, currentState.getBase());
 
 				// Checks that the previous A* action is completed.
 				if (currentAction != null) {
 					if (!currentAction.isMovementFinished(space)) {
+						if(AgentUtils.DEBUG) {
+							System.out.println("<Chromosome> - A* is not finished yet, continuing action...");
+						}
 						aimingForBase.put(myShip.getId(), true);
 						return currentAction;
 					}
 				}
 				if (pointsToVisit != null) {
 					if (!pointsToVisit.isEmpty()) {
+						if(AgentUtils.DEBUG) {
+							System.out.println("<Chromosome> - Adding next position in path to ship.");
+						}
 						Position newPosition = new Position(pointsToVisit.getFirst().getX(),
 								pointsToVisit.getFirst().getY());
 						policy.put(currentState, new BDSMMoveAction(space, myShip.getPosition(), newPosition));
@@ -219,7 +243,9 @@ public class AtkiGAChromosome {
 			
 			// Policy 3: if current action is done (or null), target nearest asteroid
 			else if (myShip.getCurrentAction() == null || myShip.getCurrentAction().isMovementFinished(space)) {
-				
+				if(AgentUtils.DEBUG) {
+					System.out.println("<Chromosome> - Policy 3: previous action is not yet finished");
+				}
 				if (currentState.getBestMineableAsteroid() != null) {
 					asteroidToShipMap.put(currentState.getBestMineableAsteroid().getId(), myShip);
 					checkForPlan(space, myShip, currentState.getBestMineableAsteroid());

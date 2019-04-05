@@ -21,7 +21,7 @@ import spacesettlers.utilities.Vector2D;
  */
 public class AgentUtils {
 	
-	static final boolean DEBUG = false;
+	public static final boolean DEBUG = false;
 	
 	static final boolean SHOW_GRAPHICS = false;
 	

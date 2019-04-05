@@ -1,14 +1,19 @@
 package spacesettlers.bost7517;
 
 import java.awt.Color;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.UUID;
 
@@ -20,6 +25,7 @@ import spacesettlers.actions.DoNothingAction;
 import spacesettlers.actions.PurchaseCosts;
 import spacesettlers.actions.PurchaseTypes;
 import spacesettlers.clients.ExampleKnowledge;
+import spacesettlers.clients.ImmutableTeamInfo;
 import spacesettlers.clients.TeamClient;
 import spacesettlers.graphics.LineGraphics;
 import spacesettlers.graphics.SpacewarGraphics;
@@ -43,6 +49,8 @@ import spacesettlers.utilities.Vector2D;
  * @author Cameron Bost, Joshua Atkinson
  */
 public class BDSMFriendyReflexAgent extends TeamClient {
+	private final int K_KMEANS = 3;
+	private static final int MAX_ITERATIONS_KMEANS = 20;
 	private boolean debug = false;
 	private boolean showMyGraphics = true;
 	HashMap <UUID, Ship> asteroidToShipMap;
@@ -61,6 +69,7 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 	
 	private int timeSincePlan = 10;
 	
+	private static final File KMEANS_OUT_FILE = new File("kmeans_fitness_continuous.csv");
 	
 	/**
 	 * Final Variables
@@ -172,8 +181,8 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 					if(timeSincePlan >= 10) {
 						current = null; //resets current stepp to null so it is able to update step
 						timeSincePlan = 0; // resets times plan back to 0
-						currentPath = graph.getPathTo(ship,  energyTarget, space); //Wil get the current path that a* has chosen
-						currentSearchTree = graph.getSearchTree(); //Returns a search tree 
+						currentPath = AStarGraph.getPathTo(ship,  energyTarget, space); //Wil get the current path that a* has chosen
+						currentSearchTree = AStarGraph.getSearchTree(); //Returns a search tree 
 						pointsToVisit = new LinkedList<Position>(currentPath.getPositions()); // Will contain all the points for a*
 					}
 					else
@@ -241,8 +250,8 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 			if(timeSincePlan >= 10) {
 				current = null;
 				timeSincePlan = 0;
-				currentPath = graph.getPathTo(ship,  base, space);
-				currentSearchTree = graph.getSearchTree();
+				currentPath = AStarGraph.getPathTo(ship,  base, space);
+				currentSearchTree = AStarGraph.getSearchTree();
 				pointsToVisit = new LinkedList<Position>(currentPath.getPositions());
 			}
 			else
@@ -299,7 +308,7 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 			aimingForBase.put(ship.getId(), false);
 			
 			// Get best asteroid
-			Asteroid asteroid = pickHighestValueNearestFreeAsteroid(space, ship);
+			Asteroid asteroid = pickHighestValueKMeansAsteroid(space, ship);
 			AbstractAction newAction = null;
 			
 			if (asteroid != null) {
@@ -308,8 +317,8 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 				if(timeSincePlan >= 10) {
 					current = null;
 					timeSincePlan = 0;
-					currentPath = graph.getPathTo(ship,  asteroid, space);
-					currentSearchTree = graph.getSearchTree();
+					currentPath = AStarGraph.getPathTo(ship,  asteroid, space);
+					currentSearchTree = AStarGraph.getSearchTree();
 					pointsToVisit = new LinkedList<Position>(currentPath.getPositions());
 				}
 				else
@@ -366,7 +375,7 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 	private void drawBlockedGrids() {
 		if(showMyGraphics) {
 			for(Vertex v: graph.getBlockedVertices()) {
-				SpacewarGraphics g = new TargetGraphics(15, graph.getCentralCoordinate(v));
+				SpacewarGraphics g = new TargetGraphics(15, AStarGraph.getCentralCoordinate(v));
 				graphicsToAdd.add(g);
 			}
 		}
@@ -427,10 +436,116 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 				}
 			}
 		}
-		//System.out.println("Best asteroid has " + bestMoney);
 		return bestAsteroid;
 	}
 	
+	/**
+	 * Performs K-Means clustering on all mineable asteroids,
+	 * then measures the value of each cluster to determine the best option.
+	 * 
+	 * @param space physics model
+	 * @param ship ship seeking asteroid
+	 * @return highest valued asteroid in highest valued cluster
+	 */
+	private Asteroid pickHighestValueKMeansAsteroid(Toroidal2DPhysics space, Ship ship) {
+		PriorityQueue<BDSM_KMeansAsteroidCluster> pQueue = new PriorityQueue<>();
+		// For 2 -> K
+		for(int i = 2; i <= K_KMEANS; i++) {
+			pQueue.addAll(kMeans(space, ship, i));
+		}
+		BDSM_KMeansAsteroidCluster targetCluster = pQueue.poll();
+		if(AgentUtils.DEBUG) {
+			System.out.println("Chosen target cluster: "+targetCluster.getCentroid());
+			System.exit(-1);
+		}
+		return targetCluster.getBestAsteroid();
+	}
+	
+
+	private Collection<BDSM_KMeansAsteroidCluster> kMeans(Toroidal2DPhysics space, Ship ship, int k) {
+		ArrayList<BDSM_KMeansAsteroidCluster> clusters = new ArrayList<>(k);
+		/**Shuffle asteroid set*/
+		Set<Asteroid> asteroidsSet = space.getAsteroids();
+		Asteroid[] asteroids = asteroidsSet.toArray(new Asteroid[asteroidsSet.size()]);
+		for(int i = asteroids.length-1; i >= 1; i--) {
+			int swapIdx = random.nextInt(i+1);
+			Asteroid t = asteroids[swapIdx];
+			asteroids[swapIdx] = asteroids[i];
+			asteroids[i] = t;
+		}
+		/**Create clusters on k random asteroids*/
+		for(int i = 0; i < k; i++) {
+			clusters.add(new BDSM_KMeansAsteroidCluster(asteroids[i], ship));
+		}
+		
+		// Iterate until movement stops
+		HashMap<BDSM_KMeansAsteroidCluster, Boolean> dupCheck = new HashMap<>();
+		HashMap<UUID, BDSM_KMeansAsteroidCluster> astClstMap = new HashMap<>();
+		boolean moveHappened = true;
+		int iterCount = 0;
+		do {
+			moveHappened = false;
+			// Reset centroid values
+			for(BDSM_KMeansAsteroidCluster c: clusters) {
+				c.resetCentroid(space);
+			}
+			
+			// Check for duplicate clusters, break if they are all duplicate
+			boolean dupFound = true;
+			for(BDSM_KMeansAsteroidCluster c: clusters) {
+				dupFound &= dupCheck.containsKey(c);
+				dupCheck.putIfAbsent(c, true);
+			}
+			// Dup found -> stop
+			if(dupFound) {
+				if(AgentUtils.DEBUG) {
+					System.out.println("***DUPLICATE ITERATION FOUND***");
+					for(BDSM_KMeansAsteroidCluster c: clusters) {
+						c.printReport();
+					}
+				}
+			}
+			// No dup found -> continue
+			else {
+				// Clear clusters
+				for(BDSM_KMeansAsteroidCluster c: clusters) {
+					c.clear();
+				}
+				
+				// Place each asteroid in correct cluster
+				for(Asteroid a: asteroids) {
+					BDSM_KMeansAsteroidCluster oldCluster = astClstMap.get(a.getId());
+					double minDistance = Double.MAX_VALUE;
+					BDSM_KMeansAsteroidCluster minCluster = null;
+					// Check distance to each cluster to find minimum
+					for(BDSM_KMeansAsteroidCluster cluster: clusters) {
+						double dist = space.findShortestDistance(a.getPosition(), cluster.getCentroid());
+						if(dist < minDistance) {
+							minDistance = dist;
+							minCluster = cluster;
+						}
+					}
+					// Add to cluster
+					minCluster.add(a);
+					astClstMap.put(a.getId(), minCluster);
+					
+					// Indicate if asteroid changed clusters
+					if(minCluster != oldCluster) {
+						moveHappened = true;
+					}
+				}
+				
+				// Iteration report
+				if(AgentUtils.DEBUG) {
+					System.out.println("KMEANS ITERATION "+iterCount++);
+					for(BDSM_KMeansAsteroidCluster c: clusters) {
+						c.printReport();
+					}
+				}
+			}
+		} while(moveHappened && iterCount < MAX_ITERATIONS_KMEANS);
+		return clusters;
+	}
 
 	@Override
 	public void getMovementEnd(Toroidal2DPhysics space, Set<AbstractActionableObject> actionableObjects) {
@@ -462,7 +577,25 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 				}
 			}
 		}
-
+		
+		// Output fitness every 10 time-steps
+		if(timeSincePlan % 50 == 0) {
+			// Get current score
+			double score = 0;
+			for(ImmutableTeamInfo ti: space.getTeamInfo()) {
+				if(ti.getTeamName().equals(this.getTeamName())) {
+					score = ti.getScore();
+					break;
+				}
+			}
+			// KMeans data export
+			try(BufferedWriter fOut = new BufferedWriter(new FileWriter(KMEANS_OUT_FILE, KMEANS_OUT_FILE.exists()))){
+				fOut.write(Double.toString(score));
+				fOut.newLine();
+			} catch (IOException e) {
+				System.err.println("Failed to output to file: "+e.getMessage());
+			}
+		}
 
 	}
 

@@ -166,8 +166,11 @@ public class AtkiGAPopulation {
 	 */
 	void swapChromosomes(int idxA, int idxB) {
 		AtkiGAChromosome t = population[idxA];
+		double dt = fitnessScores[idxA];
 		population[idxA] = population[idxB];
+		fitnessScores[idxA] = fitnessScores[idxB];
 		population[idxB] = t;
+		fitnessScores[idxB] = dt;
 	}
 	
 	/**

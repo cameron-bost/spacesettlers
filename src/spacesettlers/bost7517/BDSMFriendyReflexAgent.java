@@ -70,6 +70,7 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 	private int timeSincePlan = 10;
 	
 	private static final File KMEANS_OUT_FILE = new File("kmeans_fitness_continuous.csv");
+	private boolean kMeansExport = true;
 	
 	/**
 	 * Final Variables
@@ -579,7 +580,7 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 		}
 		
 		// Output fitness every 50 time-steps
-		if(timeSincePlan % 50 == 0) {
+		if(kMeansExport && timeSincePlan % 50 == 0) {
 			// Get current score
 			double score = 0;
 			for(ImmutableTeamInfo ti: space.getTeamInfo()) {

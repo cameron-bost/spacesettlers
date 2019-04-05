@@ -78,6 +78,8 @@ public class AtkiGAChromosome {
 	
 	@XStreamOmitField
 	private AbstractAction currentAction;
+	
+	private double fitnessValue = 1;
 
 	/**
 	 * Value that is being optimized.
@@ -342,14 +344,14 @@ public class AtkiGAChromosome {
 		// Mutate low energy threshold
 		r = random.nextDouble();
 		lowEnergyThreshold *= (double)(1.0+(r <= 0.5 ? r <= 0.25 ? -1 : 1 : 0) * mStep_lowEnergyThreshold);
-		if(optimalDistance > upperBound_lowEnergyThreshold) {
-			optimalDistance = upperBound_lowEnergyThreshold;
+		if(lowEnergyThreshold > upperBound_lowEnergyThreshold) {
+			lowEnergyThreshold = upperBound_lowEnergyThreshold;
 		}
 		// Mutate resource threshold
 		r = random.nextDouble();
 		resourceThreshold *= (double)(1.0+(r <= 0.5 ? r <= 0.25 ? -1 : 1 : 0) * mStep_resourceThreshold);
-		if(optimalDistance > upperBound_resourceThreshold) {
-			optimalDistance = upperBound_resourceThreshold;
+		if(resourceThreshold > upperBound_resourceThreshold) {
+			resourceThreshold = upperBound_resourceThreshold;
 		}
 	}
 
@@ -362,10 +364,14 @@ public class AtkiGAChromosome {
 	 * @return Child of the two parents
 	 */
 	public static AtkiGAChromosome doCrossover(AtkiGAChromosome p1, AtkiGAChromosome p2, Random random) {
-double prob = p1.optimalDistance/(p1.optimalDistance+p2.optimalDistance);
+		double prob = p1.optimalDistance/(p1.optimalDistance+p2.optimalDistance);
 		int optimalDistance = (random.nextDouble() <= prob ? p1.optimalDistance : p2.optimalDistance);
 		int lowEnergyThreshold = (random.nextDouble() <= prob ? p1.lowEnergyThreshold : p2.lowEnergyThreshold);
 		int resourceThreshold = (random.nextDouble() <= prob ? p1.resourceThreshold : p2.resourceThreshold);
 		return new AtkiGAChromosome(optimalDistance, lowEnergyThreshold, resourceThreshold);
+	}
+	
+	public void setFitness(double _fitness) {
+		fitnessValue = _fitness;
 	}
 }

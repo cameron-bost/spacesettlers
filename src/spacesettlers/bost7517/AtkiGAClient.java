@@ -81,7 +81,7 @@ public class AtkiGAClient extends TeamClient {
 	/**
 	 * How many steps each policy is evaluated for before moving to the next one
 	 */
-	static final int EVALUATION_STEPS = 10000;
+	static final int EVALUATION_STEPS = 100;
 	
 	/**
 	 * Current step

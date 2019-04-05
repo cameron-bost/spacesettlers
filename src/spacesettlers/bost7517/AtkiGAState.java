@@ -79,37 +79,4 @@ public class AtkiGAState {
 				+ (energyTarget == null ? 0 : energyTarget.getId().hashCode())
 				+ (base == null ? 0 : base.getId().hashCode()));
 	}
-<<<<<<< HEAD
-	/**
-	 * Will re-determine the asteroid based on the optimalDistance Variable.
-	 * @param optimalDistance
-	 * @param space
-	 * @param myShip
-	 */
-	public void changeDistance(int optimalDistance,Toroidal2DPhysics space,Ship myShip) 
-	{
-		int bestMoney = Integer.MIN_VALUE;
-		Set<Asteroid> asteroids = space.getAsteroids();
-		distanceToNearestMineableAsteroid = optimalDistance;
-		double distance;
-
-		for (Asteroid asteroid : asteroids) {
-			if (asteroid.isMineable()) {
-				if (asteroid.isMineable() && asteroid.getResources().getTotal() > bestMoney) {
-					distance = space.findShortestDistance(myShip.getPosition(), asteroid.getPosition());
-					if (distance < distanceToNearestMineableAsteroid) 
-					{
-						bestMoney = asteroid.getResources().getTotal();
-						distanceToNearestMineableAsteroid = distance;
-						nearestMineableAsteroid = asteroid;
-					}
-				}
-			}
-		}
-	}
-
-
-
-=======
->>>>>>> c84b1d3cc0624fb89a866697518bb93545726dc9
 }

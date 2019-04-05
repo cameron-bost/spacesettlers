@@ -88,12 +88,12 @@ public class AtkiGAChromosome {
 	 */
 	private int optimalDistance;
 	private static final double mStep_optimalDistance = 0.15;
-	private static final int upperBound_optimalDistance = 2000;
+	private static final int upperBound_optimalDistance = 15000;
 	
 	/**
 	 * Gene 2: Low energy amount
 	 */
-	private int lowEnergyThreshold;
+	private int lowEnergyThreshold = 3000;
 	private static final double mStep_lowEnergyThreshold = 0.15;
 	private static final int upperBound_lowEnergyThreshold = 5000;
 	
@@ -102,7 +102,7 @@ public class AtkiGAChromosome {
 	 */
 	private int resourceThreshold;
 	private static final double mStep_resourceThreshold = 0.15;
-	private static final int upperBound_resourceThreshold = 8000;
+	private static final int upperBound_resourceThreshold = 2000;
 	
 	/**
 	 * Chromosome constructor, global graph object is required argument.
@@ -116,8 +116,8 @@ public class AtkiGAChromosome {
 	}
 	
 	private void setRandomGeneValues(Random random) {
-		optimalDistance = (random.nextInt(upperBound_optimalDistance)+1);
-		lowEnergyThreshold = (random.nextInt(upperBound_lowEnergyThreshold)+1);
+		optimalDistance = 10;
+		lowEnergyThreshold = (random.nextInt(upperBound_lowEnergyThreshold-2000)+2000);
 		resourceThreshold = (random.nextInt(upperBound_resourceThreshold)+1);
 		if(AgentUtils.DEBUG) {
 			System.out.println("Creating new chromosome w/:"
@@ -335,21 +335,23 @@ public class AtkiGAChromosome {
 	public void mutate(Random random) {
 		// Mutate optimal distance
 		double r = random.nextDouble();
-		optimalDistance *= (double)(1.0+(r <= 0.5 ? r <= 0.25 ? -1 : 1 : 0) * mStep_optimalDistance);
+		optimalDistance *= (double)(1.15 + (r <= 0.5 ? r <= 0.25 ? -1 : 1 : 0) * mStep_optimalDistance);
 		if(optimalDistance > upperBound_optimalDistance) {
 			optimalDistance = upperBound_optimalDistance;
 		}
+		
 		// Mutate low energy threshold
 		r = random.nextDouble();
 		lowEnergyThreshold *= (double)(1.0+(r <= 0.5 ? r <= 0.25 ? -1 : 1 : 0) * mStep_lowEnergyThreshold);
-		if(optimalDistance > upperBound_lowEnergyThreshold) {
-			optimalDistance = upperBound_lowEnergyThreshold;
+		if(lowEnergyThreshold > upperBound_lowEnergyThreshold) {
+			lowEnergyThreshold = (random.nextInt(upperBound_lowEnergyThreshold-3000)+3000);
 		}
+		
 		// Mutate resource threshold
 		r = random.nextDouble();
 		resourceThreshold *= (double)(1.0+(r <= 0.5 ? r <= 0.25 ? -1 : 1 : 0) * mStep_resourceThreshold);
-		if(optimalDistance > upperBound_resourceThreshold) {
-			optimalDistance = upperBound_resourceThreshold;
+		if(resourceThreshold > upperBound_resourceThreshold) {
+			resourceThreshold = (random.nextInt(upperBound_resourceThreshold)+1);
 		}
 	}
 

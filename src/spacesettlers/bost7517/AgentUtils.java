@@ -261,24 +261,40 @@ public class AgentUtils {
 		Asteroid nearestMineableAsteroid = null;
 		Set<Asteroid> asteroids = space.getAsteroids();
 		int lowestDistance = Integer.MAX_VALUE;
-		/**For each base belonging to this team.*/
-		for (Base base: space.getBases()) {
-			if(base.getTeamName().equals(myShip.getTeamName())) {
-				/**For each mineable asteroid*/
-				for (Asteroid asteroid : asteroids) {
-					if (asteroid.isMineable()) {
-						int distance = (int) (space.findShortestDistance(myShip.getPosition(), asteroid.getPosition())
-								+ space.findShortestDistance(asteroid.getPosition(), base.getPosition()));
-						int diff = Math.abs((int)distance - (int)optDist);
-						if (diff < lowestDistance) {
-							lowestDistance = distance;
-							nearestMineableAsteroid = asteroid;
-						}
+		Asteroid bestAsteroid = null;
+		 
+//		/**For each base belonging to this team.*/
+//		for (Base base: space.getBases()) {
+//			if(base.getTeamName().equals(myShip.getTeamName())) {
+//				/**For each mineable asteroid*/
+//				for (Asteroid asteroid : asteroids) {
+//					if (asteroid.isMineable()) {
+//						int distance = (int) (space.findShortestDistance(myShip.getPosition(), asteroid.getPosition())
+//								+ space.findShortestDistance(asteroid.getPosition(), base.getPosition()));
+//						int diff = Math.abs((int)distance - (int)optDist);
+//						if (diff < lowestDistance) {
+//							lowestDistance = distance;
+//							nearestMineableAsteroid = asteroid;
+//						}
+//					}
+//				}
+//			}
+//		}
+		
+		double bestMoney = Integer.MIN_VALUE;
+		double minDistance = Double.MAX_VALUE;
+		for (Asteroid asteroid : asteroids) { // This will cycle each asteroid
+			double dist = space.findShortestDistance(asteroid.getPosition(), myShip.getPosition());
+				if (asteroid.isMineable() && dist < optDist && dist< minDistance) { // checks to make sure that we are only searching mineable asteroids and the asteroids is higher then a previous asteroid.
+					//double dist = space.findShortestDistance(asteroid.getPosition(), myShip.getPosition()); // finds the distance between the asteroid and the ship.
+					if (asteroid.getResources().getTotal() > bestMoney) { // Will determine if the new distance is less then the previous distance.
+						bestMoney = asteroid.getResources().getTotal();
+						//System.out.println("Considering asteroid " + asteroid.getId() + " as a best one");
+						bestAsteroid = asteroid;
+						minDistance = dist;
 					}
-				}
 			}
 		}
-		return nearestMineableAsteroid;
+		return bestAsteroid;
 	}
-
 }

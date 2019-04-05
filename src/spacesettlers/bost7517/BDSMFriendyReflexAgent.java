@@ -578,7 +578,7 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 			}
 		}
 		
-		// Output fitness every 10 time-steps
+		// Output fitness every 50 time-steps
 		if(timeSincePlan % 50 == 0) {
 			// Get current score
 			double score = 0;

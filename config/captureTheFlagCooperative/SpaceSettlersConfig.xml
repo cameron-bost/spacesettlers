@@ -32,8 +32,8 @@
 		     which bound where the ships and the base will be created. -->
  		<!-- The there are only two teams for CTF and the heuristic is a Flag Collector team (similar to beacons) -->
 		<HighLevelTeamConfig>
-			<teamName>BDSM</teamName>
-			<configFile>spacesettlersinit.xml</configFile>
+			<teamName>Team1</teamName>
+			<configFile>passive-flag2ships-clientinit.xml</configFile>
 		</HighLevelTeamConfig>
 		<HighLevelTeamConfig>
 			<teamName>Team2</teamName>
@@ -44,7 +44,7 @@
 	<!-- Each team needs a base.  Optionally, you can initialize the location of the base -->
 	<bases>
 		<BaseConfig>
-			<teamName>BDSM</teamName>
+			<teamName>Team1</teamName>
 			<fixedLocation>true</fixedLocation>
 			<x>700</x>
 			<y>540</y>

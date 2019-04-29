@@ -15,8 +15,8 @@
 	<!-- The list of static clients/teams.  These play in each match. -->
 	<staticTeams>
 		<HighLevelTeamConfig>
-			<teamName>BDSMFlagCollector</teamName>
-			<configFile>spacesettlersinit.xml</configFile>
+			<teamName>SimpleFlagCollector</teamName>
+			<configFile>passive-flag2ships-clientinit.xml</configFile>
 		</HighLevelTeamConfig>
 	</staticTeams>
 

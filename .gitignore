@@ -1,10 +1,6 @@
-/bin/
-/build/
-/test/
-/.classpath
-/.project
-*_test.java
-*_test.xml
-*.html
-*.txt
-src/foo.xml.gz
+build
+dist/*.jar
+.classpath
+.project
+.*
+!**/.gitignore

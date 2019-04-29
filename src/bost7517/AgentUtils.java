@@ -1,4 +1,4 @@
-package spacesettlers.bost7517;
+package bost7517;
 
 import java.util.Set;
 
@@ -265,9 +265,10 @@ public class AgentUtils {
 		
 		for (Asteroid asteroid : asteroids) { // This will cycle each asteroid
 			double dist = space.findShortestDistance(asteroid.getPosition(), myShip.getPosition());
-				if (asteroid.isMineable() && dist < optDist && dist< lowestDistance) { // checks to make sure that we are only searching mineable asteroids and the asteroids is higher then a previous asteroid.
-					//double dist = space.findShortestDistance(asteroid.getPosition(), myShip.getPosition()); // finds the distance between the asteroid and the ship.
-					if (asteroid.getResources().getTotal() > bestMoney) { // Will determine if the new distance is less then the previous distance.
+			// checks to make sure that we are only searching mineable asteroids and the distance is less than the current optimal distance
+				if (asteroid.isMineable() && dist < optDist && dist< lowestDistance) {
+					// Gets the highest value asteroid
+					if (asteroid.getResources().getTotal() > bestMoney) {
 						bestMoney = asteroid.getResources().getTotal();
 						//System.out.println("Considering asteroid " + asteroid.getId() + " as a best one");
 						nearestMineableAsteroidWithBestValue = asteroid;

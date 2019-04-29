@@ -1,4 +1,4 @@
-package spacesettlers.bost7517;
+package bost7517;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -6,7 +6,11 @@ import java.util.LinkedList;
 import java.util.PriorityQueue;
 import java.util.Set;
 
-import spacesettlers.bost7517.AgentUtils;
+import bost7517.AgentUtils;
+import bost7517.AStarGraph;
+import bost7517.AStarPath;
+import bost7517.GBFSPath;
+import bost7517.Vertex;
 import spacesettlers.objects.AbstractObject;
 import spacesettlers.objects.Asteroid;
 import spacesettlers.objects.Ship;

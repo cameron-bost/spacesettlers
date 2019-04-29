@@ -1,7 +1,8 @@
-package spacesettlers.bost7517;
+package bost7517;
 
 import com.thoughtworks.xstream.annotations.XStreamOmitField;
 
+import bost7517.AgentUtils;
 import spacesettlers.objects.AbstractObject;
 import spacesettlers.objects.Asteroid;
 import spacesettlers.objects.Base;

@@ -1,4 +1,4 @@
-package spacesettlers.bost7517;
+package bost7517;
 
 import java.awt.Color;
 import java.io.BufferedWriter;
@@ -23,6 +23,9 @@ import spacesettlers.actions.AbstractAction;
 import spacesettlers.actions.DoNothingAction;
 import spacesettlers.actions.PurchaseCosts;
 import spacesettlers.actions.PurchaseTypes;
+import bost7517.AStarGraph;
+import bost7517.BDSMMoveToObjectAction;
+import bost7517.GBFSPath;
 import spacesettlers.clients.ExampleKnowledge;
 import spacesettlers.clients.TeamClient;
 import spacesettlers.graphics.LineGraphics;

@@ -1,7 +1,9 @@
-package spacesettlers.bost7517;
+package bost7517;
 
 import java.util.LinkedList;
 import java.util.List;
+
+import bost7517.Vertex;
 
 /**
  * Vertex object used in graph class

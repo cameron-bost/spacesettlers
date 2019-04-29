@@ -1,4 +1,4 @@
-package spacesettlers.bost7517;
+package bost7517;
 
 import java.awt.Color;
 import java.io.BufferedWriter;
@@ -51,7 +51,7 @@ import spacesettlers.utilities.Vector2D;
 
 public class AtkiGAClient extends TeamClient {
 	
-	private boolean exportChromosomeData = true;
+	private boolean exportChromosomeData = false;
 	private final String fitnessOutFileName = "bdsm_fit_results.csv";
 	private final File fitnessOut = Paths.get(fitnessOutFileName).toFile();
 	

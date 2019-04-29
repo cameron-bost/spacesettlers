@@ -1,4 +1,4 @@
-package spacesettlers.bost7517;
+package bost7517;
 
 import java.awt.Color;
 import java.io.BufferedWriter;
@@ -8,29 +8,31 @@ import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Map;
-import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.UUID;
 
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.XStreamException;
 
+import bost7517.AStarPath;
 import spacesettlers.actions.AbstractAction;
 import spacesettlers.actions.DoNothingAction;
 import spacesettlers.actions.PurchaseCosts;
 import spacesettlers.actions.PurchaseTypes;
+import bost7517.AStarGraph;
+import bost7517.AgentUtils;
+import bost7517.BDSMMoveToObjectAction;
+import bost7517.GBFSPath;
 import spacesettlers.clients.ExampleKnowledge;
-import spacesettlers.clients.ImmutableTeamInfo;
 import spacesettlers.clients.TeamClient;
 import spacesettlers.graphics.LineGraphics;
 import spacesettlers.graphics.SpacewarGraphics;
 import spacesettlers.graphics.StarGraphics;
-import spacesettlers.graphics.TargetGraphics;
 import spacesettlers.objects.AbstractActionableObject;
 import spacesettlers.objects.AbstractObject;
 import spacesettlers.objects.Asteroid;
@@ -48,38 +50,40 @@ import spacesettlers.utilities.Vector2D;
  * 
  * @author Cameron Bost, Joshua Atkinson
  */
-public class BDSMFriendyReflexAgent extends TeamClient {
-	private final int K_KMEANS = 3;
-	private static final int MAX_ITERATIONS_KMEANS = 20;
+public class BDSM_AStarTestAgent extends TeamClient {
 	private boolean debug = false;
-	private boolean showMyGraphics = true;
+	private boolean showMyGraphics = false;
 	HashMap <UUID, Ship> asteroidToShipMap;
 	HashMap <UUID, Boolean> aimingForBase;
 	HashMap <UUID, Boolean> justHitBase;
 	private ArrayList<SpacewarGraphics> graphicsToAdd;
-	private LinkedList<Position> pointsToVisit;
+	
 	private AStarPath currentPath = null;
+	private GBFSPath currentPathGBFS = null;
+	
 	private LinkedList<AStarPath> currentSearchTree;
 	
-	private spacesettlers.bost7517.AStarGraph graph;
+	private AStarGraph graph;
 	/**
 	 * Example knowledge used to show how to load in/save out to files for learning
 	 */
 	ExampleKnowledge myKnowledge;
 	
-	private int timeSincePlan = 10;
+	private int timeSincePlan = 20;
 	
-	private static final File KMEANS_OUT_FILE = new File("kmeans_fitness_continuous.csv");
-	private boolean kMeansExport = true;
+	/**Data writer for statistical output*/
+	private BufferedWriter dataOut;
+	
+	private final String FILE_HEADER = "minCost,astarCost,gbfsCost";
 	
 	/**
 	 * Final Variables
 	 */
-	final double LOW_ENERGY_THRESHOLD = 2750; // #P1 - Lowered 2000 -> 1500
-	final double RESOURCE_THRESHOLD = 2000;   // #P1 - Raised 500 -> 2000
-	final double BASE_BUYING_DISTANCE = 400; // #P1 - raised 200 -> 350 
+	final double LOW_ENERGY_THRESHOLD = 1500; // #P1 - Lowered 2000 -> 1500
+	final double RESOURCE_THRESHOLD = 2500;   // #P1 - Raised 500 -> 2000
+	final double BASE_BUYING_DISTANCE = 350; // #P1 - raised 200 -> 350 
 	
-	static final int GRID_SIZE = spacesettlers.bost7517.AStarGraph.GRID_SIZE;
+	static final int GRID_SIZE = AStarGraph.GRID_SIZE;
 	
 	/**
 	 * State Variables
@@ -131,7 +135,7 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 		Position currentPosition = ship.getPosition();
 		// update previous action
 		previousAction = current;
-		//This will display graphics if enabled.
+		
 		if(showMyGraphics)
 		{
 //			System.out.println("<<INIT GRID MAPPING>> -- " + space.getHeight());
@@ -147,7 +151,7 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 		    	LineGraphics t= new LineGraphics(heightBottom,heightTop,te);
 				heightBottom = new Position(i,0);
 				heightTop = new Position(i,space.getHeight());
-				t.setLineColor(Color.gray);
+				t.setLineColor(Color.white);
 				graphicsToAdd.add(t);
 		    }
 		    
@@ -160,144 +164,45 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 		    	LineGraphics t= new LineGraphics(heightBottom,heightTop,te);
 				heightBottom = new Position(0,i);
 				heightTop = new Position(space.getWidth(),i);
-				t.setLineColor(Color.gray);
+				t.setLineColor(Color.white);
 				graphicsToAdd.add(t);
 		    }
 		    
 		    drawSearchTree(space);
-		    drawBlockedGrids();
 		}
+		
 		// Rule 1. If energy is low, go for nearest energy source
-
-		if ((ship.getEnergy() < LOW_ENERGY_THRESHOLD)) {
+		if (ship.getEnergy() < LOW_ENERGY_THRESHOLD) {
 			AbstractAction newAction = null;
+			// Find energy source
 			AbstractObject energyTarget = AgentUtils.findNearestEnergySource(space, ship);
-			
-	
-			if(current != null)
-			{
-				
-				if(energyTarget != null) {
-					//Re-plans every 20 timesteps.
-					if(timeSincePlan >= 10) {
-						current = null; //resets current stepp to null so it is able to update step
-						timeSincePlan = 0; // resets times plan back to 0
-						currentPath = AStarGraph.getPathTo(ship,  energyTarget, space); //Wil get the current path that a* has chosen
-						currentSearchTree = AStarGraph.getSearchTree(); //Returns a search tree 
-						pointsToVisit = new LinkedList<Position>(currentPath.getPositions()); // Will contain all the points for a*
-					}
-					else
-					{
-						timeSincePlan++;
-					}
-					if(current != null && (ship.getEnergy() > LOW_ENERGY_THRESHOLD)) // Want to make sure not to interrupt an a* move that has not finished yet.
-					{
-						if(!current.isMovementFinished(space)) //checks if the object has stopped moving
-						{
-							return current;
-						}
-					}
-					// Call points to create a new action to move to that object.
-					if (pointsToVisit != null)
-					{
-						if(!pointsToVisit.isEmpty())
-						{	
-							Position newPosition = new Position(pointsToVisit.getFirst().getX(),pointsToVisit.getFirst().getY());
-							newAction = new BDSMMoveAction(space, currentPosition, newPosition);
-							//Will display graphics if set to true.
-							if(showMyGraphics)
-							{
-							//LINE!!!
-								graphicsToAdd.add(new StarGraphics(3, Color.RED, newPosition));
-								LineGraphics line = new LineGraphics(currentPosition, newPosition, 
-										space.findShortestDistanceVector(currentPosition, newPosition));
-								line.setLineColor(Color.RED);
-								graphicsToAdd.add(line);
-							}
-							
-							pointsToVisit.poll();//pops the top
-							return newAction;
-						}
-					}
-					
-					//Planning currently need to run local search
-					newAction = new BDSMMoveToObjectAction(space, currentPosition, energyTarget);
-					
-					if(energyTarget instanceof Base) {
-						aimingForBase.put(ship.getId(), true);
-					}
-					else {
-						
-						aimingForBase.put(ship.getId(), false);
-						}
-					return newAction;
+			if(energyTarget != null) {
+				newAction = new BDSMMoveToObjectAction(space, currentPosition, energyTarget);
+				if(energyTarget instanceof Base) {
+					aimingForBase.put(ship.getId(), true);
+				}
+				else {
+					aimingForBase.put(ship.getId(), false);
 				}
 			}
 			else {
 				if(debug) {
 					System.out.println("Energy target returned null");
 				}
-				//Continues to next rule
 			}
-			
+			stepCount++;
+			return newAction;
 		}
 
 		// Rule 2. If the ship has enough resources, deposit them
 		if (ship.getResources().getTotal() > RESOURCE_THRESHOLD) {
-			AbstractAction newAction = null;
 			Base base = AgentUtils.findNearestBase(space, ship);
-			
-			// If time step is greater then 20 will rerun planning.
-			if(timeSincePlan >= 10) {
-				current = null;
-				timeSincePlan = 0;
-				currentPath = AStarGraph.getPathTo(ship,  base, space);
-				currentSearchTree = AStarGraph.getSearchTree();
-				pointsToVisit = new LinkedList<Position>(currentPath.getPositions());
-			}
-			else
-			{
-				timeSincePlan++;
-			}
-			
-			//Checks that the previous A* action is completed.
-			if(current != null)
-			{
-				if(!current.isMovementFinished(space))
-				{
-					aimingForBase.put(ship.getId(), true);
-					return current;
-				}
-			}
-			if (pointsToVisit != null)
-			{
-				if(!pointsToVisit.isEmpty())
-				{	
-					Position newPosition = new Position(pointsToVisit.getFirst().getX(),pointsToVisit.getFirst().getY());
-					newAction = new BDSMMoveAction(space, currentPosition, newPosition);
-					//This will display graphics if they are enabled.
-					if(showMyGraphics)
-					{
-					//LINE!!!
-						graphicsToAdd.add(new StarGraphics(3, Color.RED, newPosition));
-						LineGraphics line = new LineGraphics(currentPosition, newPosition, 
-								space.findShortestDistanceVector(currentPosition, newPosition));
-						line.setLineColor(Color.RED);
-						graphicsToAdd.add(line);
-					}
-					
-					pointsToVisit.poll();//pops the top
-					aimingForBase.put(ship.getId(), true);
-					return newAction;
-				}
-			}
-			
-			//Run a Local search for base
-			newAction = new BDSMMoveToObjectAction(space, currentPosition, base); // Will run a local search for base
+			AbstractAction newAction = new BDSMMoveToObjectAction(space, currentPosition, base);
 			aimingForBase.put(ship.getId(), true);
 			if(debug){
 				System.out.println("<Action Declaration> - Deposit (" + ship.getResources().getTotal()+")");
 			}
+			stepCount++;
 			return newAction;
 		}
 
@@ -309,58 +214,60 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 			aimingForBase.put(ship.getId(), false);
 			
 			// Get best asteroid
-			Asteroid asteroid = pickHighestValueKMeansAsteroid(space, ship);
+			Asteroid asteroid = pickHighestValueNearestFreeAsteroid(space, ship);
+			if(showMyGraphics) {
+				//CREATE A LINE From the ship to the current target asteroid.
+				graphicsToAdd.add(new StarGraphics(3, this.getTeamColor(), asteroid.getPosition()));
+				LineGraphics line = new LineGraphics(ship.getPosition(), asteroid.getPosition(), 
+						space.findShortestDistanceVector(ship.getPosition(), asteroid.getPosition()));
+				
+				line.setLineColor(this.getTeamColor());
+				graphicsToAdd.add(line);
+				//Create N number of objects;
+				/*
+				for(int i = 0; i < 20 ;i++)
+				{
+					
+					double shipxValue = ship.getPosition().getX();
+					double asteroidxValue = asteroid.getPosition().getX();
+					double shipyValue = ship.getPosition().getY();
+					double asteroidyValue = asteroid.getPosition().getY();
+					
+					//double randomX = ThreadLocalRandom.current().nextDouble(shipxValue, asteroidxValue);
+					//double randomY = ThreadLocalRandom.current().nextDouble(shipyValue, asteroidyValue);
+					
+					Random rand = new Random();
+					double randomxValue = shipxValue + (asteroidxValue - shipxValue) * rand.nextDouble();
+					double randomyValue = shipyValue + (asteroidyValue - shipyValue) * rand.nextDouble();
+					Position middle = new Position (randomxValue,randomyValue);
+					graphicsToAdd.add(new CircleGraphics(Color.WHITE,middle));
+				}*/
+			}
 			AbstractAction newAction = null;
 			
 			if (asteroid != null) {
 				asteroidToShipMap.put(asteroid.getId(), ship);
-				//Re-plans every 10 steps.
-				if(timeSincePlan >= 10) {
-					current = null;
+				
+				if(timeSincePlan >= 20) {
 					timeSincePlan = 0;
-					currentPath = AStarGraph.getPathTo(ship,  asteroid, space);
-					currentSearchTree = AStarGraph.getSearchTree();
-					pointsToVisit = new LinkedList<Position>(currentPath.getPositions());
+					currentPath = graph.getPathTo(ship,  asteroid, space);
+					currentPathGBFS = graph.getPathToGBFS(ship,  asteroid, space);
+					// Export data
+					exportData((int)space.findShortestDistance(ship.getPosition(), asteroid.getPosition()), currentPath.getTotalCost(), currentPathGBFS.getTotalCost());
 				}
-				else
-				{
+				else {
 					timeSincePlan++;
 				}
-				//Checks to make sure that the current A* is move is finished.
-				if(current != null)
-				{
-					if(!current.isMovementFinished(space))
-					{
-						return current;
-					}
-				}
-				//Will create actions for A* points.
-				if (pointsToVisit != null)
-				{
-					if(!pointsToVisit.isEmpty())
-					{	
-						//Will assign a Position variable with the positions.
-						Position newPosition = new Position(pointsToVisit.getFirst().getX(),pointsToVisit.getFirst().getY());
-						//Create the action to move to the A* position.
-						newAction = new BDSMMoveAction(space, currentPosition, newPosition, asteroid);
-						//This will displayed graphics if true.
-						if(showMyGraphics)
-						{
-							graphicsToAdd.add(new StarGraphics(3, Color.RED, newPosition));
-							LineGraphics line = new LineGraphics(currentPosition, newPosition, 
-									space.findShortestDistanceVector(currentPosition, newPosition));
-							line.setLineColor(Color.RED);
-							graphicsToAdd.add(line);
-						}
-						
-						pointsToVisit.poll();//pops the top
-						return newAction;
-					}
-				}
+				//newAction = new MoveAction(space,currentPosition,asteroid.getPosition());
+				newAction = new BDSMMoveToObjectAction(space, currentPosition, asteroid, 
+						asteroid.getPosition().getTranslationalVelocity());
 				
-				// Runs a local search
-				newAction = new BDSMMoveToObjectAction(space, currentPosition, asteroid, asteroid.getPosition().getTranslationalVelocity());			
-				
+				if(debug)
+				{
+					System.out.println("<Action Declaration> - Chasing asteroid");
+					System.out.println("<Velocity Check> - "+ship.getPosition().getTranslationalVelocity());
+				}
+				stepCount++;
 				return newAction;
 			}
 		}
@@ -371,43 +278,17 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 		return ship.getCurrentAction();
 	}
 	
-	
-	
-	private void drawBlockedGrids() {
-		if(showMyGraphics) {
-			for(Vertex v: graph.getBlockedVertices()) {
-				SpacewarGraphics g = new TargetGraphics(15, AStarGraph.getCentralCoordinate(v));
-				graphicsToAdd.add(g);
-			}
+	private void exportData(int min_cost, int astar_path_cost, int gbfs_path_cost) {
+		// Export data
+		try {
+			String dataOutStr = String.format("%d,%d,%d", min_cost,astar_path_cost,gbfs_path_cost);
+			dataOut.write(dataOutStr);
+			dataOut.newLine();
+			System.out.println("<SearchTest.exportStats> - Wrote data to file: "+dataOutStr);
 		}
-	}
-
-	/**
-	 * This function will find the closest valued asteroid. It does not determine by the amount that the asteroid is worth.
-	 * 
-	 * @return
-	 */
-	private Asteroid pickNearestFreeAsteroid(Toroidal2DPhysics space, Ship ship) {
-		/*
-		 * this will gather all the resources that are currently available on the map and stores them in variable to use. This will allow us to search each
-		 * asteroid individually.
-		 */
-        Set<Asteroid> asteroids = space.getAsteroids();
-        Asteroid bestAsteroid = null;
-        double minDistance = Double.MAX_VALUE; //declares value for min distance.
-        for (Asteroid asteroid : asteroids) {
-            if (!asteroidToShipMap.containsKey(asteroid.getId())) {
-                if (asteroid.isMineable()) { // determines if the asteroid is mineable
-                    double dist = space.findShortestDistance(asteroid.getPosition(), ship.getPosition());// finds the distance between the asteroid and the ship.
-                    if (dist < minDistance) { // Will determine if the new distance is less then the previous distance.
-                        //System.out.println("Considering asteroid " + asteroid.getId() + " as a best one");
-                        bestAsteroid = asteroid;
-                        minDistance = dist;
-                    }
-                }
-            }
-        }
-        return bestAsteroid;
+		catch(IOException e) {
+			System.out.println("<SearchTest.exportStats> - Error while writing data to file: "+e.getMessage());
+		}
 	}
 	
 	/**
@@ -437,116 +318,10 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 				}
 			}
 		}
+		//System.out.println("Best asteroid has " + bestMoney);
 		return bestAsteroid;
 	}
 	
-	/**
-	 * Performs K-Means clustering on all mineable asteroids,
-	 * then measures the value of each cluster to determine the best option.
-	 * 
-	 * @param space physics model
-	 * @param ship ship seeking asteroid
-	 * @return highest valued asteroid in highest valued cluster
-	 */
-	private Asteroid pickHighestValueKMeansAsteroid(Toroidal2DPhysics space, Ship ship) {
-		PriorityQueue<BDSM_KMeansAsteroidCluster> pQueue = new PriorityQueue<>();
-		// For 2 -> K
-		for(int i = 2; i <= K_KMEANS; i++) {
-			pQueue.addAll(kMeans(space, ship, i));
-		}
-		BDSM_KMeansAsteroidCluster targetCluster = pQueue.poll();
-		if(AgentUtils.DEBUG) {
-			System.out.println("Chosen target cluster: "+targetCluster.getCentroid());
-			System.exit(-1);
-		}
-		return targetCluster.getBestAsteroid();
-	}
-	
-
-	private Collection<BDSM_KMeansAsteroidCluster> kMeans(Toroidal2DPhysics space, Ship ship, int k) {
-		ArrayList<BDSM_KMeansAsteroidCluster> clusters = new ArrayList<>(k);
-		/**Shuffle asteroid set*/
-		Set<Asteroid> asteroidsSet = space.getAsteroids();
-		Asteroid[] asteroids = asteroidsSet.toArray(new Asteroid[asteroidsSet.size()]);
-		for(int i = asteroids.length-1; i >= 1; i--) {
-			int swapIdx = random.nextInt(i+1);
-			Asteroid t = asteroids[swapIdx];
-			asteroids[swapIdx] = asteroids[i];
-			asteroids[i] = t;
-		}
-		/**Create clusters on k random asteroids*/
-		for(int i = 0; i < k; i++) {
-			clusters.add(new BDSM_KMeansAsteroidCluster(asteroids[i], ship));
-		}
-		
-		// Iterate until movement stops
-		HashMap<BDSM_KMeansAsteroidCluster, Boolean> dupCheck = new HashMap<>();
-		HashMap<UUID, BDSM_KMeansAsteroidCluster> astClstMap = new HashMap<>();
-		boolean moveHappened = true;
-		int iterCount = 0;
-		do {
-			moveHappened = false;
-			// Reset centroid values
-			for(BDSM_KMeansAsteroidCluster c: clusters) {
-				c.resetCentroid(space);
-			}
-			
-			// Check for duplicate clusters, break if they are all duplicate
-			boolean dupFound = true;
-			for(BDSM_KMeansAsteroidCluster c: clusters) {
-				dupFound &= dupCheck.containsKey(c);
-				dupCheck.putIfAbsent(c, true);
-			}
-			// Dup found -> stop
-			if(dupFound) {
-				if(AgentUtils.DEBUG) {
-					System.out.println("***DUPLICATE ITERATION FOUND***");
-					for(BDSM_KMeansAsteroidCluster c: clusters) {
-						c.printReport();
-					}
-				}
-			}
-			// No dup found -> continue
-			else {
-				// Clear clusters
-				for(BDSM_KMeansAsteroidCluster c: clusters) {
-					c.clear();
-				}
-				
-				// Place each asteroid in correct cluster
-				for(Asteroid a: asteroids) {
-					BDSM_KMeansAsteroidCluster oldCluster = astClstMap.get(a.getId());
-					double minDistance = Double.MAX_VALUE;
-					BDSM_KMeansAsteroidCluster minCluster = null;
-					// Check distance to each cluster to find minimum
-					for(BDSM_KMeansAsteroidCluster cluster: clusters) {
-						double dist = space.findShortestDistance(a.getPosition(), cluster.getCentroid());
-						if(dist < minDistance) {
-							minDistance = dist;
-							minCluster = cluster;
-						}
-					}
-					// Add to cluster
-					minCluster.add(a);
-					astClstMap.put(a.getId(), minCluster);
-					
-					// Indicate if asteroid changed clusters
-					if(minCluster != oldCluster) {
-						moveHappened = true;
-					}
-				}
-				
-				// Iteration report
-				if(AgentUtils.DEBUG) {
-					System.out.println("KMEANS ITERATION "+iterCount++);
-					for(BDSM_KMeansAsteroidCluster c: clusters) {
-						c.printReport();
-					}
-				}
-			}
-		} while(moveHappened && iterCount < MAX_ITERATIONS_KMEANS);
-		return clusters;
-	}
 
 	@Override
 	public void getMovementEnd(Toroidal2DPhysics space, Set<AbstractActionableObject> actionableObjects) {
@@ -578,25 +353,7 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 				}
 			}
 		}
-		
-		// Output fitness every 50 time-steps
-		if(kMeansExport && timeSincePlan % 50 == 0) {
-			// Get current score
-			double score = 0;
-			for(ImmutableTeamInfo ti: space.getTeamInfo()) {
-				if(ti.getTeamName().equals(this.getTeamName())) {
-					score = ti.getScore();
-					break;
-				}
-			}
-			// KMeans data export
-			try(BufferedWriter fOut = new BufferedWriter(new FileWriter(KMEANS_OUT_FILE, KMEANS_OUT_FILE.exists()))){
-				fOut.write(Double.toString(score));
-				fOut.newLine();
-			} catch (IOException e) {
-				System.err.println("Failed to output to file: "+e.getMessage());
-			}
-		}
+
 
 	}
 
@@ -605,7 +362,7 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 	 */
 	@Override
 	public void initialize(Toroidal2DPhysics space) {
-		graph = AStarGraph.getInstance(space.getHeight(), space.getWidth(), false);
+		graph = AStarGraph.getInstance(space.getHeight(), space.getWidth(), true);
 		asteroidToShipMap = new HashMap<UUID, Ship>();
 		aimingForBase = new HashMap<UUID, Boolean>();
 		justHitBase = new HashMap<UUID, Boolean>();
@@ -625,6 +382,16 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 				graphicsToAdd.add(t);
 		    }
 		    
+		}
+		
+		try {
+			dataOut = new BufferedWriter(new FileWriter("search_compare_data.txt"));
+			System.out.println("<SearchTest.INIT> - Opened output stream");
+			dataOut.write(FILE_HEADER);
+			dataOut.newLine();
+			System.out.println("<SearchTest.INIT> - Wrote file header");
+		} catch (IOException e) {
+			System.out.println("<SearchTest.INIT> - Error while opening output stream: "+e.getMessage());
 		}
 		
 		XStream xstream = new XStream();
@@ -649,6 +416,14 @@ public class BDSMFriendyReflexAgent extends TeamClient {
 		XStream xstream = new XStream();
 		xstream.alias("ExampleKnowledge", ExampleKnowledge.class);
 
+		try {
+			dataOut.close();
+			System.out.println("<A*.shutdown> - Closed file stream");
+		}
+		catch(IOException e) {
+			System.out.println("<A*.shutdown> - Error encountered while closing output stream: "+e.getMessage());
+		}
+		
 		try { 
 			// if you want to compress the file, change FileOuputStream to a GZIPOutputStream
 			xstream.toXML(myKnowledge, new FileOutputStream(new File(getKnowledgeFile())));

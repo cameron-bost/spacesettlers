@@ -1,7 +1,10 @@
-package spacesettlers.bost7517;
+package bost7517;
 
 import java.util.LinkedList;
 
+import bost7517.AStarGraph;
+import bost7517.AStarPath;
+import bost7517.Vertex;
 import spacesettlers.utilities.Position;
 /**
  * Represents a path traveled by the AStar algorithm. Returned by AStarGraph.getPathTo()

@@ -1,4 +1,4 @@
-package spacesettlers.bost7517;
+package bost7517;
 
 import java.io.BufferedWriter;
 import java.io.File;

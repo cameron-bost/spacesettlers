@@ -1,6 +1,7 @@
-package spacesettlers.bost7517;
+package bost7517;
 
 
+import bost7517.BDSMMoveAction;
 import spacesettlers.objects.AbstractObject;
 import spacesettlers.simulator.Toroidal2DPhysics;
 import spacesettlers.utilities.Position;

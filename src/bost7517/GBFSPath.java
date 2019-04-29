@@ -1,7 +1,10 @@
-package spacesettlers.bost7517;
+package bost7517;
 
 import java.util.LinkedList;
 
+import bost7517.AStarGraph;
+import bost7517.GBFSPath;
+import bost7517.Vertex;
 import spacesettlers.utilities.Position;
 
 public class GBFSPath implements Comparable<GBFSPath>{

@@ -1,4 +1,4 @@
-package spacesettlers.bost7517;
+package bost7517;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -18,6 +18,9 @@ import spacesettlers.actions.MoveAction;
 import spacesettlers.actions.MoveToObjectAction;
 import spacesettlers.actions.PurchaseCosts;
 import spacesettlers.actions.PurchaseTypes;
+import bost7517.AgentUtils;
+//import bost7517.ShipState;
+//import bost7517.TimeoutChecker;
 import spacesettlers.clients.ExampleKnowledge;
 import spacesettlers.clients.TeamClient;
 import spacesettlers.graphics.SpacewarGraphics;

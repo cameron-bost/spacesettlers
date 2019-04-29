@@ -1,4 +1,4 @@
-package spacesettlers.bost7517;
+package bost7517;
 
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -8,6 +8,13 @@ import java.util.UUID;
 import com.thoughtworks.xstream.annotations.XStreamOmitField;
 
 import spacesettlers.actions.AbstractAction;
+import bost7517.AStarGraph;
+import bost7517.AStarPath;
+import bost7517.AgentUtils;
+import bost7517.AtkiGAChromosome;
+import bost7517.AtkiGAState;
+import bost7517.BDSMMoveAction;
+import bost7517.BDSMMoveToObjectAction;
 import spacesettlers.objects.AbstractObject;
 import spacesettlers.objects.Ship;
 import spacesettlers.simulator.Toroidal2DPhysics;
@@ -118,7 +125,7 @@ public class AtkiGAChromosome {
 	}
 	
 	private void setRandomGeneValues(Random random) {
-		optimalDistance = 10;
+		optimalDistance = 15000;
 		lowEnergyThreshold = (random.nextInt(upperBound_lowEnergyThreshold-2000)+2000);
 		resourceThreshold = (random.nextInt(upperBound_resourceThreshold)+1);
 		if(AgentUtils.DEBUG) {
@@ -353,9 +360,7 @@ public class AtkiGAChromosome {
 		r = random.nextDouble();
 		resourceThreshold *= (double)(1.0+(r <= 0.5 ? r <= 0.25 ? -1 : 1 : 0) * mStep_resourceThreshold);
 		if(resourceThreshold > upperBound_resourceThreshold) {
-
 			resourceThreshold = (random.nextInt(upperBound_resourceThreshold)+1);
-
 		}
 	}
 

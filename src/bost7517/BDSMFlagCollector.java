@@ -89,12 +89,13 @@ public class BDSMFlagCollector extends TeamClient {
 						/*
 						 * ASTAR
 						 */
-						if(timeSincePlan >= 10) {
-							ship.setCurrentAction(null); //resets current stepp to null so it is able to update step
+						if(timeSincePlan >= 20) {
+							ship.setCurrentAction(null); //resets current step to null so it is able to update step
 							timeSincePlan = 0; // resets times plan back to 0
-							currentPath = AStarGraph.getPathTo(ship,  enemyFlag, space); //Wil get the current path that a* has chosen
+							currentPath = AStarGraph.getPathTo(ship,  enemyFlag, space); //Will get the current path that a* has chosen
 							currentSearchTree = AStarGraph.getSearchTree(); //Returns a search tree 
 							pointsToVisit = new LinkedList<Position>(currentPath.getPositions()); // Will contain all the points for a*
+							System.out.println("Calling");
 						}
 						else
 						{
@@ -108,7 +109,6 @@ public class BDSMFlagCollector extends TeamClient {
 							{	
 								Position newPosition = new Position(pointsToVisit.getFirst().getX(),pointsToVisit.getFirst().getY());
 								action = new BDSMMoveAction(space, ship.getPosition(), newPosition);
-								
 								pointsToVisit.poll();//pops the top
 							}
 						}
@@ -426,10 +426,12 @@ public class BDSMFlagCollector extends TeamClient {
 	 */
 	@Override
 	public void initialize(Toroidal2DPhysics space) {
+		graph = AStarGraph.getInstance(space.getHeight(), space.getWidth(), false);
 		asteroidToShipMap = new HashMap<UUID, Ship>();
 		aimingForBase = new HashMap<UUID, Boolean>();
 		justHitBase = new HashMap<UUID, Boolean>();
 		goingForCore = new HashMap<UUID, Boolean>();
+		
 	}
 
 	/**
@@ -515,7 +517,7 @@ public class BDSMFlagCollector extends TeamClient {
 					if (buyBase && numBases < numShips) {
 						purchases.put(ship.getId(), PurchaseTypes.BASE);
 						bought_base = true;
-						System.out.println("Pacifist Flag Collector is buying a base!");
+						System.out.println("BDSM is buying a base!");
 						break;
 					}
 				}

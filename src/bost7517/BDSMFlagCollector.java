@@ -52,11 +52,40 @@ public class BDSMFlagCollector extends TeamClient {
 	private LinkedList<AStarPath> currentSearchTree;
 	private bost7517.AStarGraph graph;
 	private int timeSincePlan = 10;
+	private boolean checkBaseLocation = true;
+	private boolean baseIsLeft = false;
+	private boolean baseIsRight = false;
+	private Ship flagGuard1;
+	private Ship flagGuard2;
+	private Position guardPosition1 = new Position(1450,300);
+	private Position guardPosition2 = new Position(1300,900);
+	public boolean noflagGuard1Base = true;
 	/**
 	 * Assigns ships to asteroids and beacons, as described above
 	 */
 	public Map<UUID, AbstractAction> getMovementStart(Toroidal2DPhysics space,
 			Set<AbstractActionableObject> actionableObjects) {
+		
+		//Need to check our starting base location to determine what side of the map we are starting on.
+		if(checkBaseLocation)
+		{
+			Set<Base> b = space.getBases();
+			for(Base base: b)
+			{				
+				if(base.getTeamName().equalsIgnoreCase(getTeamName()) && base.getPosition().getX() < 800 )
+				{
+					baseIsLeft = true;
+					System.out.println("<OUR BASE> - is LEFT!!!");
+				}
+				if(base.getTeamName().equalsIgnoreCase(getTeamName()) && base.getPosition().getX() > 800 )
+				{
+					baseIsRight = true;
+					System.out.println("<OUR BASE> - is Right!!!");
+				}
+			}
+			checkBaseLocation = false;
+		}
+		
 		HashMap<UUID, AbstractAction> actions = new HashMap<UUID, AbstractAction>();
 		Ship flagShip;
 
@@ -64,7 +93,8 @@ public class BDSMFlagCollector extends TeamClient {
 		flagShip = getFlagCarrier(space, actionableObjects);
 
 		// we don't have a ship carrying a flag, so find the best choice (if it exists)
-		if (flagShip == null) {
+		if (flagShip == null) 
+		{
 			flagShip = findHealthiestShipNearFlag(space, actionableObjects);
 		}
 
@@ -74,7 +104,7 @@ public class BDSMFlagCollector extends TeamClient {
 			if (actionable instanceof Ship) {
 				Ship ship = (Ship) actionable;
 
-				AbstractAction action;
+				AbstractAction action = null;
 
 				if (flagShip != null && ship.equals(flagShip)) {
 					if (flagShip.isCarryingFlag())
@@ -95,7 +125,6 @@ public class BDSMFlagCollector extends TeamClient {
 							currentPath = AStarGraph.getPathTo(ship,  enemyFlag, space); //Will get the current path that a* has chosen
 							currentSearchTree = AStarGraph.getSearchTree(); //Returns a search tree 
 							pointsToVisit = new LinkedList<Position>(currentPath.getPositions()); // Will contain all the points for a*
-							System.out.println("Calling");
 						}
 						else
 						{
@@ -114,7 +143,59 @@ public class BDSMFlagCollector extends TeamClient {
 						}
 						action = new MoveToObjectAction(space, ship.getPosition(), enemyFlag,enemyFlag.getPosition().getTranslationalVelocity());
 					}
-				} else {
+				} 
+				//Will allow if flag guard 1 is collected to.
+				//1. Return flag if it has it
+				//2. Collect flag with a certain distance.
+				//3. go back to its post if flag is not there
+				//4. Do noting if all the above is true.
+				else if (flagGuard1 != null && ship.equals(flagGuard1))
+				{
+						Flag enemyFlag = getEnemyFlag(space);
+						double flagdistance = space.findShortestDistance(flagGuard1.getPosition(),enemyFlag.getPosition());
+						if (flagGuard1.isCarryingFlag())
+						{
+							Base base = findNearestBase(space, ship);
+							action = new MoveToObjectAction(space, ship.getPosition(), base);
+							aimingForBase.put(ship.getId(), true);
+						} 
+						if(flagdistance < 450)
+						{
+							System.out.println("flag guard 1 grabbing flag");
+							action = new MoveToObjectAction(space, flagGuard1.getPosition(), enemyFlag,enemyFlag.getPosition().getTranslationalVelocity());
+						}
+						else if(flagGuard1.getPosition() != guardPosition1)
+						{
+							action = new BDSMMoveAction(space,flagGuard1.getPosition(),guardPosition1);
+						}
+						
+				}
+				else if (flagGuard2 != null && ship.equals(flagGuard2))
+				{
+						Flag enemyFlag = getEnemyFlag(space);
+						double distance = space.findShortestDistance(flagGuard2.getPosition(),enemyFlag.getPosition());
+						if (flagGuard2.isCarryingFlag())
+						{
+							Base base = findNearestBase(space, ship);
+							action = new MoveToObjectAction(space, ship.getPosition(), base);
+							aimingForBase.put(ship.getId(), true);
+						} 
+						if(distance < 75)
+						{
+							
+							action = new MoveToObjectAction(space, ship.getPosition(), enemyFlag,enemyFlag.getPosition().getTranslationalVelocity());
+						}
+						else if(flagGuard2.getPosition() != guardPosition2)
+						{
+							action = new BDSMMoveAction(space,flagGuard1.getPosition(),guardPosition2);
+						}
+
+						else
+							actions.put(actionable.getId(), new DoNothingAction());
+						
+				}
+				else 
+				{
 					action = getAsteroidCollectorAction(space, ship);
 				}
 
@@ -224,7 +305,7 @@ public class BDSMFlagCollector extends TeamClient {
 		Position currentPosition = ship.getPosition();
 
 		// if the ship has enough resourcesAvailable, take it back to base
-		if (ship.getResources().getTotal() > 2000  || ship.getNumCores() > 0) {
+		if (ship.getResources().getTotal() > 1000  || ship.getNumCores() > 0) {
 			Base base = findNearestBase(space, ship);
 			AbstractAction newAction = new BDSMMoveToObjectAction(space, currentPosition, base);
 			aimingForBase.put(ship.getId(), true);
@@ -250,7 +331,7 @@ public class BDSMFlagCollector extends TeamClient {
 		// if there is a nearby core, go get it
 		AiCore nearbyCore = pickNearestCore(space, ship, 200);
 		if (nearbyCore != null) {
-			AbstractAction newAction = new BDSMMoveToObjectAction(space, currentPosition, nearbyCore);
+			AbstractAction newAction = new BDSMMoveToObjectAction(space, currentPosition, nearbyCore, nearbyCore.getPosition().getTranslationalVelocity());
 			goingForCore.put(ship.getId(), true);
 			aimingForBase.put(ship.getId(), false);
 			return newAction;
@@ -465,7 +546,8 @@ public class BDSMFlagCollector extends TeamClient {
 
 		// count the number of ships for the base/ship buying algorithm
 		numShips = 0;
-		for (AbstractActionableObject actionableObject : actionableObjects) {
+		for (AbstractActionableObject actionableObject : actionableObjects) 
+		{
 			if (actionableObject instanceof Ship) {
 				numShips++;
 			}
@@ -495,9 +577,126 @@ public class BDSMFlagCollector extends TeamClient {
 			}
 		}
 		
-		// now see if we can afford a base or a ship.  We want a base but we also really want a 3rd ship
+		// now see if we can afford a base or a ship.  We want a base but we also really want a 4th ship
 		// try to balance
 		if (purchaseCosts.canAfford(PurchaseTypes.BASE, resourcesAvailable)) {
+			Ship bestShip = null;
+			double minDistance = Double.MAX_VALUE;
+			boolean buyBase = true;
+			
+			if(flagGuard1 == null)
+			{
+				for (AbstractActionableObject actionableObject : actionableObjects) 
+				{
+					if (actionableObject instanceof Ship) 
+					{
+						Ship ship = (Ship) actionableObject;
+						double dist =  space.findShortestDistance(ship.getPosition(), new Position(950,500));
+						if(dist < minDistance)
+						{
+							bestShip = ship;
+						}
+					}
+				}
+				flagGuard1=bestShip;
+				System.out.println("<DEBUG> - Flag guard assigned");
+			}
+			
+			double guard1ToLocation =  space.findShortestDistance(flagGuard1.getPosition(), guardPosition1);
+			
+			if(flagGuard1 != null && guard1ToLocation < 150)
+			{
+				for (AbstractActionableObject actionableObject : actionableObjects) 
+				{
+					if (actionableObject instanceof Ship) 
+					{
+						Ship ship = (Ship) actionableObject;
+						if(!ship.equals(flagGuard1))
+						{
+							double dist =  space.findShortestDistance(ship.getPosition(), guardPosition2);
+							if(dist < minDistance)
+							{
+								bestShip = ship;
+							}
+						}
+					}
+				}
+				flagGuard2=bestShip;
+				System.out.println("<DEBUG> - Flag guard 2 assigned");
+			}
+			
+			Set<Base> bases = space.getBases();
+			boolean base1Exist = true;
+			boolean base2Exist = true;
+			double minDistanceX = Double.MAX_VALUE;
+			for (Base base : bases) 
+			{
+				if (base.getTeamName().equalsIgnoreCase(getTeamName()))
+				{
+					double distance = space.findShortestDistance(guardPosition1, base.getPosition());
+					if (distance < minDistanceX) {
+						minDistanceX = distance;
+					}
+				}
+			}
+			
+			if(minDistanceX > 150)
+			{
+				base1Exist = false;
+			}
+			
+			for (Base base : bases) 
+			{
+				if (base.getTeamName().equalsIgnoreCase(getTeamName()))
+				{
+					double distance = space.findShortestDistance(guardPosition2, base.getPosition());
+					
+					if (distance < 100) {
+						base2Exist = false;
+					}
+				}
+			}
+
+			
+			if(base1Exist == false)
+			{
+				for (AbstractActionableObject actionableObject : actionableObjects) 
+				{
+					if (actionableObject instanceof Ship) 
+					{
+						Ship ship = (Ship) actionableObject;
+						double distance = space.findShortestDistance(ship.getPosition(),guardPosition1);
+						if(ship.equals(flagGuard1) && distance < 20)
+						{
+							purchases.put(flagGuard1.getId(), PurchaseTypes.BASE);
+							bought_base = true;
+							noflagGuard1Base = false;
+							System.out.println("BDSM guardShip1 is buying base!");
+						}
+						
+					}
+				}
+			}
+			
+			if(base1Exist && base2Exist == false)
+				for (AbstractActionableObject actionableObject : actionableObjects) 
+				{
+					if (actionableObject instanceof Ship) 
+					{
+						Ship ship = (Ship) actionableObject;
+						double distance = space.findShortestDistance(ship.getPosition(),guardPosition2);
+						if(ship.equals(flagGuard2) && distance < 20)
+						{
+							purchases.put(flagGuard2.getId(), PurchaseTypes.BASE);
+							bought_base = true;
+							noflagGuard1Base = false;
+							System.out.println("BDSM guardShip2 is buying base!");
+						}
+						
+					}
+				}
+			
+			/*
 			for (AbstractActionableObject actionableObject : actionableObjects) {
 				if (actionableObject instanceof Ship) {
 					Ship ship = (Ship) actionableObject;
@@ -505,7 +704,8 @@ public class BDSMFlagCollector extends TeamClient {
 					// how far away is this ship to a base of my team?
 					boolean buyBase = true;
 					numBases = 0;
-					for (Base base : bases) {
+					for (Base base : bases) 
+					{
 						if (base.getTeamName().equalsIgnoreCase(getTeamName())) {
 							numBases++;
 							double distance = space.findShortestDistance(ship.getPosition(), base.getPosition());
@@ -513,7 +713,8 @@ public class BDSMFlagCollector extends TeamClient {
 								buyBase = false;
 							}
 						}
-					}
+					}					
+					
 					if (buyBase && numBases < numShips) {
 						purchases.put(ship.getId(), PurchaseTypes.BASE);
 						bought_base = true;
@@ -521,7 +722,7 @@ public class BDSMFlagCollector extends TeamClient {
 						break;
 					}
 				}
-			}		
+			}		*/
 		} 
 
 		// can I buy a ship?

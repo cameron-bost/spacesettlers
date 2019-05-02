@@ -90,6 +90,7 @@ public class BDSMFlagCollector extends TeamClient {
 		Ship flagShip;
 
 		// get the flag carrier, if we have one
+
 		flagShip = getFlagCarrier(space, actionableObjects);
 
 		// we don't have a ship carrying a flag, so find the best choice (if it exists)
@@ -122,7 +123,7 @@ public class BDSMFlagCollector extends TeamClient {
 						if(timeSincePlan >= 20) {
 							ship.setCurrentAction(null); //resets current step to null so it is able to update step
 							timeSincePlan = 0; // resets times plan back to 0
-							currentPath = AStarGraph.getPathTo(ship,  enemyFlag, space); //Will get the current path that a* has chosen
+							currentPath = AStarGraph.getPathTo(flagShip,  enemyFlag, space); //Will get the current path that a* has chosen
 							currentSearchTree = AStarGraph.getSearchTree(); //Returns a search tree 
 							pointsToVisit = new LinkedList<Position>(currentPath.getPositions()); // Will contain all the points for a*
 						}
@@ -132,16 +133,21 @@ public class BDSMFlagCollector extends TeamClient {
 						}
 						
 						// Call points to create a new action to move to that object.
-						if (pointsToVisit != null)
+						if (pointsToVisit != null && flagShip.getCurrentAction() != null)
 						{
-							if(!pointsToVisit.isEmpty())
+							if(!pointsToVisit.isEmpty() && flagShip.getCurrentAction().isMovementFinished(space))
 							{	
 								Position newPosition = new Position(pointsToVisit.getFirst().getX(),pointsToVisit.getFirst().getY());
 								action = new BDSMMoveAction(space, ship.getPosition(), newPosition);
 								pointsToVisit.poll();//pops the top
 							}
+							else
+							{
+								pointsToVisit.poll();
+							}
 						}
-						action = new MoveToObjectAction(space, ship.getPosition(), enemyFlag,enemyFlag.getPosition().getTranslationalVelocity());
+						else
+							action = new MoveToObjectAction(space, ship.getPosition(), enemyFlag,enemyFlag.getPosition().getTranslationalVelocity());
 					}
 				} 
 				//Will allow if flag guard 1 is collected to.
@@ -149,22 +155,24 @@ public class BDSMFlagCollector extends TeamClient {
 				//2. Collect flag with a certain distance.
 				//3. go back to its post if flag is not there
 				//4. Do noting if all the above is true.
-				else if (flagGuard1 != null && ship.equals(flagGuard1))
+				else if (flagGuard1 != null && ship.equals(flagGuard1) && !ship.equals(flagShip))
 				{
 						Flag enemyFlag = getEnemyFlag(space);
 						double flagdistance = space.findShortestDistance(flagGuard1.getPosition(),enemyFlag.getPosition());
+						double distanceFromSpot = space.findShortestDistance(flagGuard1.getPosition(),guardPosition1);
+						/*
 						if (flagGuard1.isCarryingFlag())
 						{
 							Base base = findNearestBase(space, ship);
 							action = new MoveToObjectAction(space, ship.getPosition(), base);
 							aimingForBase.put(ship.getId(), true);
 						} 
-						if(flagdistance < 450)
+						if(flagdistance < 350)
 						{
-							System.out.println("flag guard 1 grabbing flag");
 							action = new MoveToObjectAction(space, flagGuard1.getPosition(), enemyFlag,enemyFlag.getPosition().getTranslationalVelocity());
 						}
-						else if(flagGuard1.getPosition() != guardPosition1)
+						*/
+						if(distanceFromSpot > 150)
 						{
 							action = new BDSMMoveAction(space,flagGuard1.getPosition(),guardPosition1);
 						}
@@ -604,8 +612,9 @@ public class BDSMFlagCollector extends TeamClient {
 			
 			double guard1ToLocation =  space.findShortestDistance(flagGuard1.getPosition(), guardPosition1);
 			
-			if(flagGuard1 != null && guard1ToLocation < 150)
+			if(flagGuard1 != null && guard1ToLocation > 300)
 			{
+				System.out.println("<DEBUG> - looking for flag guard 2");
 				for (AbstractActionableObject actionableObject : actionableObjects) 
 				{
 					if (actionableObject instanceof Ship) 
@@ -644,6 +653,10 @@ public class BDSMFlagCollector extends TeamClient {
 			{
 				base1Exist = false;
 			}
+			else
+				base1Exist = true;
+			
+			minDistanceX = Double.MAX_VALUE;
 			
 			for (Base base : bases) 
 			{
@@ -651,11 +664,18 @@ public class BDSMFlagCollector extends TeamClient {
 				{
 					double distance = space.findShortestDistance(guardPosition2, base.getPosition());
 					
-					if (distance < 100) {
-						base2Exist = false;
+					if (distance < minDistanceX) {
+						minDistanceX = distance;
 					}
 				}
 			}
+			
+			if(minDistanceX > 150)
+			{
+				base2Exist = false;
+			}
+			else
+				base2Exist = true;
 
 			
 			if(base1Exist == false)

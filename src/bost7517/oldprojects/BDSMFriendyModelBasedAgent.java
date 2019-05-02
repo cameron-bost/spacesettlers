@@ -1,4 +1,4 @@
-package bost7517;
+package bost7517.oldprojects;
 
 import java.io.File;
 import java.io.FileNotFoundException;

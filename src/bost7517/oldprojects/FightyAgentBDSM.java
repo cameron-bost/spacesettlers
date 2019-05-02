@@ -1,4 +1,4 @@
-package bost7517;
+package bost7517.oldprojects;
 
 import java.util.ArrayList;
 import java.util.HashMap;

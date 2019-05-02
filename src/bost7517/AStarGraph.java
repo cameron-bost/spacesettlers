@@ -385,7 +385,7 @@ public class AStarGraph {
 	 * @param v Vertex to find central coordinate of
 	 * @return Position object representing the center of a vertex grid square
 	 */
-	static Position getCentralCoordinate(Vertex v) {
+	public static Position getCentralCoordinate(Vertex v) {
 		return new Position(v.getMtxColumn()*GRID_SIZE + (GRID_SIZE/2), v.getMtxRow()*GRID_SIZE + (GRID_SIZE/2));
 	}
 	

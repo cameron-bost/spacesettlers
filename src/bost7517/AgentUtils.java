@@ -23,21 +23,21 @@ public class AgentUtils {
 	
 	public static final boolean DEBUG = false;
 	
-	static final boolean SHOW_GRAPHICS = false;
+	public static final boolean SHOW_GRAPHICS = false;
 	
-	static final double MAX_VELOCITY = Toroidal2DPhysics.MAX_TRANSLATIONAL_VELOCITY;
+	public static final double MAX_VELOCITY = Toroidal2DPhysics.MAX_TRANSLATIONAL_VELOCITY;
 	
 	/**
 	 * A* constants
 	 */
-	static final int PLAN_INTERVAL = 10;
+	public static final int PLAN_INTERVAL = 10;
 	
 	/**
 	 * Constants used in policy
 	 */
-	static final double LOW_ENERGY_THRESHOLD = 2750;
-	static final double RESOURCE_THRESHOLD = 2000;
-	static final double BASE_BUYING_DISTANCE = 400;
+	public static final double LOW_ENERGY_THRESHOLD = 2750;
+	public static final double RESOURCE_THRESHOLD = 2000;
+	public static final double BASE_BUYING_DISTANCE = 400;
 
 	/**
 	 * Distance at which a projection is considered targeting
@@ -51,7 +51,7 @@ public class AgentUtils {
 	 * @param ship ship currently acting
 	 * @return nearest energy source
 	 */
-	static AbstractObject findNearestEnergySource(Toroidal2DPhysics space, Ship ship) {
+	public static AbstractObject findNearestEnergySource(Toroidal2DPhysics space, Ship ship) {
 		double minDistance = Double.MAX_VALUE;
 		AbstractObject bestObject = null;
 		
@@ -108,7 +108,7 @@ public class AgentUtils {
 	 * @param ship
 	 * @return
 	 */
-	static Base findNearestBase(Toroidal2DPhysics space, Ship ship) {
+	public static Base findNearestBase(Toroidal2DPhysics space, Ship ship) {
 		double minDistance = Double.MAX_VALUE;
 		Base nearestBase = null;
 
@@ -131,7 +131,7 @@ public class AgentUtils {
 	 * @param ship
 	 * @return
 	 */
-	static AiCore findNearestAiCore(Toroidal2DPhysics space, Ship ship) {
+	public static AiCore findNearestAiCore(Toroidal2DPhysics space, Ship ship) {
 		double minDistance = Double.MAX_VALUE;
 		AiCore nearestCore = null;
 
@@ -154,7 +154,7 @@ public class AgentUtils {
 	 * @param ship
 	 * @return
 	 */
-	static Beacon findNearestBeacon(Toroidal2DPhysics space, Ship ship) {
+	public static Beacon findNearestBeacon(Toroidal2DPhysics space, Ship ship) {
 		// get the current beacons
 		Set<Beacon> beacons = space.getBeacons();
 
@@ -172,7 +172,7 @@ public class AgentUtils {
 		return closestBeacon;
 	}
 	
-	static String getAbstractType(Object object) {
+	public static String getAbstractType(Object object) {
 		String objType = object.getClass().getName();
 		String[] components = objType.split("\\.");
 		return components[components.length-1];
@@ -185,7 +185,7 @@ public class AgentUtils {
 	 * @param asteroid
 	 * @return
 	 */
-	static boolean targetedByOpponent(Toroidal2DPhysics space, Ship ship, Asteroid asteroid) {
+	public static boolean targetedByOpponent(Toroidal2DPhysics space, Ship ship, Asteroid asteroid) {
 		for(Ship enemy: space.getShips()) {
 			if(!enemy.getTeamName().equals(ship.getTeamName())) {
 				Position pE = enemy.getPosition();
@@ -232,7 +232,7 @@ public class AgentUtils {
 	 * @param object Object being considered
 	 * @return Whether or not object is a threat
 	 */
-	static boolean isDangerous(Ship ship, AbstractObject object) {
+	public static boolean isDangerous(Ship ship, AbstractObject object) {
 		return !(object.getId().equals(ship.getId()) || !object.isAlive() 
 				|| object instanceof Missile || object instanceof Beacon
 				|| object instanceof AiCore 

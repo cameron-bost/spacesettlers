@@ -1,10 +1,8 @@
 package bost7517;
 
-import java.util.List;
-import java.util.LinkedList;
+import java.util.UUID;
 
-import spacesettlers.actions.AbstractAction;
-import spacesettlers.actions.DoNothingAction;
+import bost7517.BDSM_P4_Planner.BDSM_P4_State;
 import spacesettlers.simulator.Toroidal2DPhysics;
 
 /**
@@ -18,79 +16,38 @@ public abstract class BDSM_P4_Action {
 	private boolean preMet = false, postMet = false;
 	
 	private BDSM_P4_State state;
+	private UUID[] actors;
 	
-	public BDSM_P4_Action(BDSM_P4_State state) {
-		this.state = state;
-	}
-	
-	public BDSM_P4_State getState() {
-		return state;
+	BDSM_P4_Action(BDSM_P4_State _state){
+		state = _state;
 	}
 	
 	/**
 	 * The precondition. This must be true before calling doAction()
 	 * @return whether the precondition has been met.
 	 */
-	public abstract boolean preCondition(Toroidal2DPhysics space);
+	public boolean preCondition() {
+		return preMet || _preCondition(state);
+	}
+	
+	/**
+	 * Precondition logic goes here.
+	 * 
+	 * @param state current state
+	 * @return whether the precondition has been met
+	 */
+	protected abstract boolean _preCondition(BDSM_P4_State state);
+	
 	/**
 	 * The postcondition. This must be true before terminating the action.
 	 * @return whether the postcondition has been met.
 	 */
 	public abstract boolean postCondition(Toroidal2DPhysics space);
-	/**
-	 * Performs action logic
-	 */
-	protected abstract List<AbstractAction> _doAction(Toroidal2DPhysics space);
 	
 	/**
-	 * Initializes the action and any necessary structures
-	 */
-	protected abstract void _beginAction(Toroidal2DPhysics space);
-	
-	/**
-	 * Performs end of action logic. May be empty.
-	 */
-	protected abstract void _endAction(Toroidal2DPhysics space);
-	
-	/**
-	 * Performs action if precondition has been met
+	 * Accessor for corresponding enum entry
 	 * 
-	 * @param space physics model
-	 * @return List of actions to perform for this high-level action
+	 * @return corresponding enum entry in BDSM_P4_Actions
 	 */
-	public List<AbstractAction> doAction(Toroidal2DPhysics space) {
-		LinkedList<AbstractAction> ret = new LinkedList<>();
-		// Precondition is not met
-		if(!preMet) {
-			if(preCondition(space)) {
-				preMet = true;
-				_beginAction(space);
-				return _doAction(space);
-			}
-			// Precondition is not met, don't do anything for this action
-			else {
-				ret.add(new DoNothingAction());
-			}
-		}
-		// Precondition is met, postcondition is not
-		else if(!postMet){
-			// Postcondition has been met
-			if(postCondition(space)) {
-				postMet = true;
-				_endAction(space);
-				ret.add(new DoNothingAction());
-			}
-			// Postcondition has not been met, proceed normally
-			else {
-				return _doAction(space);
-			}
-		}
-		// Precondition and postcondition are met
-		else{
-			// Do nothing
-			ret.add(new DoNothingAction());
-		}
-		
-		return ret;
-	}
+	public abstract BDSM_P4_Actions getAction();
 }

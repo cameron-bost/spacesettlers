@@ -114,9 +114,31 @@ public class BDSMFlagCollector extends TeamClient {
 				// Parse _Actions member
 				switch(highLevelAction) {
 				case GetEnergy:
-					actions.put(s.getId(), getGetEnergyAction(s));
+					actions.put(s.getId(), getGetEnergyAction(space, s));
 					break;
+				
+				case ReturnFlag:
+					actions.put(s.getId(), ReturnFlag(space, s));
+					break;
+					
+				case CaptureFlag:
+					actions.put(s.getId(), CaptureFlag(space, s));
+					break;
+					
+				case DumpResources:
+					actions.put(s.getId(), DumpResources(space, s));
+					break;
+				
+				case GetResoruces:
+					actions.put(s.getId(), GetResoruces(space, s));
+					break;
+					
+				case DoNothing:
+					actions.put(s.getId(), DoNothing(space, s));
+					break;
+				// Yikes don't want to be here.
 				default:
+					
 					break;
 				}
 			}
@@ -262,9 +284,57 @@ public class BDSMFlagCollector extends TeamClient {
 		return actions;*/
 	}
 
-	private AbstractAction getGetEnergyAction(Ship s) {
+	//Do nothing case.
+	private AbstractAction DoNothing(Toroidal2DPhysics space, Ship s) 
+	{
+		AbstractAction	newAction = new DoNothingAction();
+		return newAction;
+	}
+	
+	//Get resources case.
+	private AbstractAction GetResoruces(Toroidal2DPhysics space, Ship s) 
+	{
+		Asteroid asteroid = pickHighestValueNearestFreeAsteroid(space, s);
+		AbstractAction newAction = null;
+		if (asteroid != null) {
+			asteroidToShipMap.put(asteroid.getId(), s);
+			newAction = new BDSMMoveToObjectAction(space, s.getPosition(), asteroid, asteroid.getPosition().getTranslationalVelocity());
+		}
+		return newAction;
+	}
+
+	//Take resources to base case.
+	private AbstractAction DumpResources(Toroidal2DPhysics space, Ship s) {
+		Base base = findNearestBase(space, s);
+		AbstractAction action = new MoveToObjectAction(space, s.getPosition(), base);
+		aimingForBase.put(s.getId(), true);
+		return action;
+	}
+	
+	//capture the enemy flag.
+	private AbstractAction CaptureFlag(Toroidal2DPhysics space, Ship s) {
+		Flag enemyFlag = getEnemyFlag(space);
+		AbstractAction action = new BDSMMoveAction(space, s.getPosition(), enemyFlag.getPosition());
+		return action;
+	}
+
+	//Return the flag to our base case.
+	private AbstractAction ReturnFlag(Toroidal2DPhysics space, Ship s) 
+	{
+		Base base = findNearestBase(space, s);
+		AbstractAction action = new MoveToObjectAction(space, s.getPosition(), base);
+		aimingForBase.put(s.getId(), true);
+		return action;
+	}
+
+	//get energy action case.
+	private AbstractAction getGetEnergyAction(Toroidal2DPhysics space, Ship s) 
+	{
 		// TODO find energy source, get A* path, assign action
-		return null;
+		Beacon beacon = pickNearestBeacon(space, s);
+		AbstractAction newAction = new BDSMMoveToObjectAction(space, s.getPosition(), beacon);
+		
+		return newAction;
 	}
 
 	/**

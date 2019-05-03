@@ -46,12 +46,16 @@ public class BDSMFlagCollector extends TeamClient {
 	HashMap <UUID, Boolean> aimingForBase;
 	HashMap <UUID, Boolean> justHitBase;
 	HashMap <UUID, Boolean> goingForCore;
-//	private ArrayList<SpacewarGraphics> graphicsToAdd;
-//	private LinkedList<Position> pointsToVisit;
-//	private AStarPath currentPath = null;
-//	private LinkedList<AStarPath> currentSearchTree;
+	HashMap	<UUID,AStarPath> aStarCurrentPath = null;
+	HashMap	<UUID,LinkedList<Position>> aStarPointsToVisit;
+	HashMap	<UUID,LinkedList<AStarPath>> aStarCurrentSearchTree;
+	
+	private ArrayList<SpacewarGraphics> graphicsToAdd;
+	private LinkedList<Position> pointsToVisit;
+	private AStarPath currentPath = null;
+	private LinkedList<AStarPath> currentSearchTree;
 	private bost7517.AStarGraph graph;
-//	private int timeSincePlan = 10;
+	private int timeSincePlan = 10;
 	private boolean checkBaseLocation = true;
 	private boolean baseIsLeft = false;
 	private boolean baseIsRight = false;
@@ -331,10 +335,45 @@ public class BDSMFlagCollector extends TeamClient {
 	private AbstractAction getGetEnergyAction(Toroidal2DPhysics space, Ship s) 
 	{
 		// TODO find energy source, get A* path, assign action
-		Beacon beacon = pickNearestBeacon(space, s);
-		AbstractAction newAction = new BDSMMoveToObjectAction(space, s.getPosition(), beacon);
 		
-		return newAction;
+		Beacon beacon = pickNearestBeacon(space, s);
+		AbstractAction action = null;
+		//A* Attempt.
+		if(timeSincePlan >= 20) 
+		{
+			s.setCurrentAction(null); //resets current step to null so it is able to update step
+			//reset time since plan;
+			timeSincePlan = 0;
+			//Current path which is assoicated with with a ship
+			aStarCurrentPath.put(s.getId(), AStarGraph.getPathTo(s,  beacon, space)); //Will get the current path that a* has chosen
+			//Current tree thats associated with a ship
+			aStarCurrentSearchTree.put(s.getId(), AStarGraph.getSearchTree());
+			//Will have a list of linked list position associated with a ship ID
+			aStarPointsToVisit.put(s.getId(), aStarCurrentPath.get(s.getId()).getPositions());
+		}
+		//increase time since plan.
+		else
+			timeSincePlan++;
+		
+		if (aStarPointsToVisit.get(s.getId()) != null)
+		{
+			if(!pointsToVisit.isEmpty() && s.getCurrentAction().isMovementFinished(space))
+			{	
+				Position newPosition = new Position(aStarPointsToVisit.get(s.getId()).getFirst().getX(),aStarPointsToVisit.get(s.getId()).getFirst().getY());
+				//Position newPosition = new Position(pointsToVisit.getFirst().getX(),
+				//		pointsToVisit.getFirst().getY());
+				action = new BDSMMoveAction(space, s.getPosition(), newPosition);
+				aStarPointsToVisit.get(s.getId()).poll();//pops the top
+			}
+			else
+			{
+				aStarPointsToVisit.get(s.getId()).poll();
+			}
+		}
+		else
+			action = new BDSMMoveToObjectAction(space, s.getPosition(), beacon);
+		
+		return action;
 	}
 
 	/**

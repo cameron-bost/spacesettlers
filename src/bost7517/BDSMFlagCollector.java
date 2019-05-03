@@ -46,12 +46,12 @@ public class BDSMFlagCollector extends TeamClient {
 	HashMap <UUID, Boolean> aimingForBase;
 	HashMap <UUID, Boolean> justHitBase;
 	HashMap <UUID, Boolean> goingForCore;
-	private ArrayList<SpacewarGraphics> graphicsToAdd;
-	private LinkedList<Position> pointsToVisit;
-	private AStarPath currentPath = null;
-	private LinkedList<AStarPath> currentSearchTree;
+//	private ArrayList<SpacewarGraphics> graphicsToAdd;
+//	private LinkedList<Position> pointsToVisit;
+//	private AStarPath currentPath = null;
+//	private LinkedList<AStarPath> currentSearchTree;
 	private bost7517.AStarGraph graph;
-	private int timeSincePlan = 10;
+//	private int timeSincePlan = 10;
 	private boolean checkBaseLocation = true;
 	private boolean baseIsLeft = false;
 	private boolean baseIsRight = false;
@@ -60,6 +60,7 @@ public class BDSMFlagCollector extends TeamClient {
 	private Position guardPosition1 = new Position(1450,300);
 	private Position guardPosition2 = new Position(1300,900);
 	public boolean noflagGuard1Base = true;
+	
 	/**
 	 * Assigns ships to asteroids and beacons, as described above
 	 */
@@ -85,7 +86,45 @@ public class BDSMFlagCollector extends TeamClient {
 			}
 			checkBaseLocation = false;
 		}
+		HashMap<UUID, AbstractAction> actions = new HashMap<UUID, AbstractAction>();
 		
+		// Check for replan
+		boolean replan = false;
+		LinkedList<Ship> ships = new LinkedList<>();
+		LinkedList<Base> bases = new LinkedList<>();
+		for(AbstractActionableObject obj: actionableObjects) {
+			if(obj instanceof Ship) {
+				ships.add((Ship) obj);
+				if(((Ship) obj).getCurrentAction() == null) {
+					replan = true;
+				}
+			}
+			else if(obj instanceof Base) {
+				bases.add((Base) obj);
+			}
+		}
+		
+		// If replan needed, call planner for all objects
+		if(replan) {
+			for(Ship s: ships) {
+				// Plan
+				BDSM_P4_Planner planner = new BDSM_P4_Planner(space, actionableObjects, s, BDSM_P4_ShipRole.ResourceBoy);
+				BDSM_P4_Actions highLevelAction = planner.getNextAction(space, s);
+				
+				// Parse _Actions member
+				switch(highLevelAction) {
+				case GetEnergy:
+					actions.put(s.getId(), getGetEnergyAction(s));
+					break;
+				default:
+					break;
+				}
+			}
+		}
+		
+		return actions;
+		
+		/**
 		HashMap<UUID, AbstractAction> actions = new HashMap<UUID, AbstractAction>();
 		Ship flagShip;
 
@@ -119,7 +158,7 @@ public class BDSMFlagCollector extends TeamClient {
 						Flag enemyFlag = getEnemyFlag(space);
 						/*
 						 * ASTAR
-						 */
+						 *
 						if(timeSincePlan >= 20) {
 							ship.setCurrentAction(null); //resets current step to null so it is able to update step
 							timeSincePlan = 0; // resets times plan back to 0
@@ -160,7 +199,7 @@ public class BDSMFlagCollector extends TeamClient {
 						Flag enemyFlag = getEnemyFlag(space);
 						double flagdistance = space.findShortestDistance(flagGuard1.getPosition(),enemyFlag.getPosition());
 						double distanceFromSpot = space.findShortestDistance(flagGuard1.getPosition(),guardPosition1);
-						/*
+						
 						if (flagGuard1.isCarryingFlag())
 						{
 							Base base = findNearestBase(space, ship);
@@ -171,7 +210,7 @@ public class BDSMFlagCollector extends TeamClient {
 						{
 							action = new MoveToObjectAction(space, flagGuard1.getPosition(), enemyFlag,enemyFlag.getPosition().getTranslationalVelocity());
 						}
-						*/
+						
 						if(distanceFromSpot > 150)
 						{
 							action = new BDSMMoveAction(space,flagGuard1.getPosition(),guardPosition1);
@@ -220,7 +259,12 @@ public class BDSMFlagCollector extends TeamClient {
 				actions.put(actionable.getId(), new DoNothingAction());
 			}
 		} 
-		return actions;
+		return actions;*/
+	}
+
+	private AbstractAction getGetEnergyAction(Ship s) {
+		// TODO find energy source, get A* path, assign action
+		return null;
 	}
 
 	/**

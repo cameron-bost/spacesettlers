@@ -29,9 +29,12 @@ public class BDSM_P4_Planner {
 	 * Once a path has been found, each ship is given their next action via the return value.
 	 * 
 	 * @param space physics model
-	 * @return Map of all team object IDs to their corresponding actions
+	 * @param s acting ship
+	 * @return Best action for this ship
 	 */
-	public HashMap<UUID, BDSM_P4_Actions> getNextActions(Toroidal2DPhysics space){
+	public BDSM_P4_Actions getNextAction(Toroidal2DPhysics space, Ship s) {
+		// TODO run BFS to find path to goal. once path is found, return first action for this ship
+		UUID shipId = s.getId();
 		return null;
 	}
 	

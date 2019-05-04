@@ -17,7 +17,6 @@ import spacesettlers.clients.TeamClient;
 import spacesettlers.graphics.SpacewarGraphics;
 import spacesettlers.objects.AbstractActionableObject;
 import spacesettlers.objects.AbstractObject;
-import spacesettlers.objects.AiCore;
 import spacesettlers.objects.Asteroid;
 import spacesettlers.objects.Base;
 import spacesettlers.objects.Beacon;
@@ -48,20 +47,11 @@ public class BDSMFlagCollector extends TeamClient {
 	HashMap	<UUID,LinkedList<Position>> aStarPointsToVisit;
 	HashMap	<UUID,LinkedList<AStarPath>> aStarCurrentSearchTree;
 	HashMap	<UUID,Position> guardingPositions;
-	
-	private ArrayList<SpacewarGraphics> graphicsToAdd;
-	private LinkedList<Position> pointsToVisit;
-	private AStarPath currentPath = null;
-	private LinkedList<AStarPath> currentSearchTree;
-	private bost7517.AStarGraph graph;
 	private int timeSincePlan = 10;
 	private boolean checkBaseLocation = true;
-	private boolean baseIsLeft = false;
-	private boolean baseIsRight = false;
-	private Ship flagGuard1;
-	private Ship flagGuard2;
 	private LinkedList<Position> positionList;
 	public boolean noflagGuard1Base = true;
+	private boolean debug = true;
 	
 	/**
 	 * Assigns ships to asteroids and beacons, as described above
@@ -77,8 +67,6 @@ public class BDSMFlagCollector extends TeamClient {
 			{				
 				if(base.getTeamName().equalsIgnoreCase(getTeamName()) && base.getPosition().getX() < 800 )
 				{
-					baseIsLeft = true;
-					System.out.println("<OUR BASE> - is LEFT!!!");
 					positionList = new LinkedList<Position>();
 					positionList.add(new Position(1450,300));
 					positionList.add(new Position(1200,900));
@@ -86,9 +74,6 @@ public class BDSMFlagCollector extends TeamClient {
 				}
 				if(base.getTeamName().equalsIgnoreCase(getTeamName()) && base.getPosition().getX() > 800 )
 				{
-					baseIsRight = true;
-					System.out.println("<OUR BASE> - is Right!!!");
-					
 					positionList = new LinkedList<Position>();
 					positionList.add(new Position(250,800));
 					positionList.add(new Position(400,500));
@@ -123,7 +108,10 @@ public class BDSMFlagCollector extends TeamClient {
 				// Plan
 				BDSM_MultiAgentPlanner planner = new BDSM_MultiAgentPlanner(space, actionableObjects, s, BDSM_ShipRole.ResourceBoy);
 				BDSM_PlanActions highLevelAction = planner.getNextAction();
-				System.out.println(planner.getNextAction());
+				
+				if(debug)//debug current action
+					System.out.println(planner.getNextAction());
+				
 				// Parse _Actions member
 				switch(highLevelAction) {
 				case GetEnergy:
@@ -154,9 +142,8 @@ public class BDSMFlagCollector extends TeamClient {
 					actions.put(s.getId(), Guard(space, s));
 					break;
 					
-				// Yikes don't want to be here.
 				default:
-					System.out.println("DiDNT get anything :(");
+					System.out.println("<ERROR> - Did not recieve an action from the planner");
 					break;
 				}
 			}
@@ -182,7 +169,7 @@ public class BDSMFlagCollector extends TeamClient {
 		
 		//distance is greater than 100 return back to base.
 		//Not a* due to the fact it only deals with objects
-		if(distanceFromSpot > 100)
+		if(distanceFromSpot > 70)
 		{
 			action = new BDSMMoveAction(space, s.getPosition(), guardingPositions.get(s.getId()));
 		}
@@ -457,27 +444,6 @@ public class BDSMFlagCollector extends TeamClient {
 	}
 
 	/**
-	 * Get the flag carrier (if there is one).  Return null if there isn't a current flag carrier
-	 * 
-	 * @param space
-	 * @param actionableObjects
-	 * @return
-	 */
-	private Ship getFlagCarrier(Toroidal2DPhysics space,
-			Set<AbstractActionableObject> actionableObjects) {
-		for (AbstractObject actionable :  actionableObjects) {
-			if (actionable instanceof Ship) {
-				Ship ship = (Ship) actionable;
-
-				if (ship.isCarryingFlag()) {
-					return ship;
-				}
-			}
-		}
-		return null;
-	}
-
-	/**
 	 * Finds and returns the enemy flag
 	 * @param space
 	 * @return
@@ -493,145 +459,6 @@ public class BDSMFlagCollector extends TeamClient {
 		}
 		return enemyFlag;
 	}
-
-
-	/**
-	 * Finds the ship with the highest health and nearest the flag
-	 * 
-	 * @param space
-	 * @param actionableObjects
-	 * @return
-	 */
-	private Ship findHealthiestShipNearFlag(Toroidal2DPhysics space,
-			Set<AbstractActionableObject> actionableObjects) {
-		double minDistance = Double.MAX_VALUE;
-		double maxHealth = Double.MIN_VALUE;
-		int minHealth = 2000;
-		Ship bestShip = null;
-
-		// first find the enemy flag
-		Flag enemyFlag = getEnemyFlag(space);
-
-		// now find the healthiest ship that has at least the required minimum energy 
-		// if no ships meet that criteria, return null
-		for (AbstractObject actionable :  actionableObjects) {
-			if (actionable instanceof Ship) {
-				Ship ship = (Ship) actionable;
-
-				double dist = space.findShortestDistance(ship.getPosition(), enemyFlag.getPosition());
-				if (dist < minDistance && ship.getEnergy() > minHealth) {
-					if (ship.getEnergy() > maxHealth) {
-						minDistance = dist;
-						maxHealth = ship.getEnergy();
-						bestShip = ship;
-					}
-				}
-			}
-		}
-
-		return bestShip;
-
-	}
-
-
-	/**
-	 * Gets the action for the asteroid collecting ship
-	 * @param space
-	 * @param ship
-	 * @return
-	 */
-	private AbstractAction getAsteroidCollectorAction(Toroidal2DPhysics space,
-			Ship ship) {
-		AbstractAction current = ship.getCurrentAction();
-		Position currentPosition = ship.getPosition();
-
-		// if the ship has enough resourcesAvailable, take it back to base
-		if (ship.getResources().getTotal() > 1000  || ship.getNumCores() > 0) {
-			Base base = findNearestBase(space, ship);
-			AbstractAction newAction = new BDSMMoveToObjectAction(space, currentPosition, base);
-			aimingForBase.put(ship.getId(), true);
-			goingForCore.put(ship.getId(), false);
-			return newAction;
-		}
-
-		// aim for a beacon if there isn't enough energy
-		if (ship.getEnergy() < 3000) {
-			Beacon beacon = pickNearestBeacon(space, ship);
-			AbstractAction newAction = null;
-			// if there is no beacon, then just skip a turn
-			if (beacon == null) {
-				newAction = new DoNothingAction();
-			} else {
-				newAction = new BDSMMoveToObjectAction(space, currentPosition, beacon);
-			}
-			aimingForBase.put(ship.getId(), false);
-			goingForCore.put(ship.getId(), false);
-			return newAction;
-		}
-
-		// if there is a nearby core, go get it
-		AiCore nearbyCore = pickNearestCore(space, ship, 200);
-		if (nearbyCore != null) {
-			AbstractAction newAction = new BDSMMoveToObjectAction(space, currentPosition, nearbyCore, nearbyCore.getPosition().getTranslationalVelocity());
-			goingForCore.put(ship.getId(), true);
-			aimingForBase.put(ship.getId(), false);
-			return newAction;
-		}
-
-
-		// did we bounce off the base?
-		if (current == null || current.isMovementFinished(space) ||
-				(justHitBase.containsKey(ship.getId()) && justHitBase.get(ship.getId()))) {
-			aimingForBase.put(ship.getId(), false);
-			justHitBase.put(ship.getId(), false);			
-			goingForCore.put(ship.getId(), false);
-			current = null;
-		}
-
-		// otherwise aim for the asteroid
-		if (current == null || current.isMovementFinished(space)) {
-			aimingForBase.put(ship.getId(), false);
-			goingForCore.put(ship.getId(), false);
-			Asteroid asteroid = pickHighestValueNearestFreeAsteroid(space, ship);
-
-			AbstractAction newAction = null;
-
-			if (asteroid != null) {
-				asteroidToShipMap.put(asteroid.getId(), ship);
-				newAction = new BDSMMoveToObjectAction(space, currentPosition, asteroid, 
-						asteroid.getPosition().getTranslationalVelocity());
-			}
-
-			return newAction;
-		} 
-
-		return ship.getCurrentAction();
-	}
-
-
-	/**
-	 * Find the nearest core to this ship that falls within the specified minimum distance
-	 * @param space
-	 * @param ship
-	 * @return
-	 */
-	private AiCore pickNearestCore(Toroidal2DPhysics space, Ship ship, int minimumDistance) {
-		Set<AiCore> cores = space.getCores();
-
-		AiCore closestCore = null;
-		double bestDistance = minimumDistance;
-
-		for (AiCore core : cores) {
-			double dist = space.findShortestDistance(ship.getPosition(), core.getPosition());
-			if (dist < bestDistance) {
-				bestDistance = dist;
-				closestCore = core;
-			}
-		}
-
-		return closestCore;
-	}	
-
 
 	/**
 	 * Find the base for this team nearest to this ship
@@ -748,7 +575,6 @@ public class BDSMFlagCollector extends TeamClient {
 	 */
 	@Override
 	public void initialize(Toroidal2DPhysics space) {
-		graph = AStarGraph.getInstance(space.getHeight(), space.getWidth(), false);
 		asteroidToShipMap = new HashMap<UUID, Ship>();
 		aimingForBase = new HashMap<UUID, Boolean>();
 		justHitBase = new HashMap<UUID, Boolean>();
@@ -784,19 +610,7 @@ public class BDSMFlagCollector extends TeamClient {
 			PurchaseCosts purchaseCosts) {
 
 		HashMap<UUID, PurchaseTypes> purchases = new HashMap<UUID, PurchaseTypes>();
-		double BASE_BUYING_DISTANCE = 400;
 		boolean bought_base = false;
-		int numBases, numShips;
-
-		// count the number of ships for the base/ship buying algorithm
-		numShips = 0;
-		for (AbstractActionableObject actionableObject : actionableObjects) 
-		{
-			if (actionableObject instanceof Ship) {
-				numShips++;
-			}
-		}
-
 		boolean boughtDrone = false;
 		boolean boughtCore = false;
 
@@ -839,39 +653,6 @@ public class BDSMFlagCollector extends TeamClient {
 					
 				}
 			}	
-			/*
-			for (AbstractActionableObject actionableObject : actionableObjects) {
-				if (actionableObject instanceof Ship) {
-					Ship ship = (Ship) actionableObject;
-					
-					if(guardingPositions.get(ship.getId()) != null)
-					{
-						purchases.put(ship.getId(), PurchaseTypes.BASE);
-					}
-					
-					Set<Base> bases = space.getBases();
-					// how far away is this ship to a base of my team?
-					boolean buyBase = true;
-					numBases = 0;
-					for (Base base : bases) 
-					{
-						if (base.getTeamName().equalsIgnoreCase(getTeamName())) {
-							numBases++;
-							double distance = space.findShortestDistance(ship.getPosition(), base.getPosition());
-							if (distance < BASE_BUYING_DISTANCE) {
-								buyBase = false;
-							}
-						}
-					}					
-					
-					if (buyBase && numBases < numShips) {
-						purchases.put(ship.getId(), PurchaseTypes.BASE);
-						bought_base = true;
-						System.out.println("BDSM is buying a base!");
-						break;
-					}
-				}
-			}*/
 		} 
 
 		// can I buy a ship?

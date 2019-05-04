@@ -57,7 +57,7 @@ public class BDSM_PlanState {
 		numShips = realShips.size();
 		numBases = realBases.size();
 		
-		
+		ships = new StateShip[TOTAL_SHIPS];
 		int i = 0;
 		for(Ship s: realShips) {
 			ships[i] = new StateShip(s, space, role);
@@ -68,6 +68,7 @@ public class BDSM_PlanState {
 		}
 		
 		// Init base
+		bases = new StateBase[TOTAL_BASES];
 		i = 0;
 		for(; i < numBases; i++) {
 			bases[i] = new StateBase(space, realBases.get(i));

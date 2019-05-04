@@ -36,8 +36,8 @@
 			<configFile>spacesettlersinit.xml</configFile>
 		</HighLevelTeamConfig>
 		<HighLevelTeamConfig>
-			<teamName>Team2</teamName>
-			<configFile>passive-flag3ships-clientinit.xml</configFile>
+			<teamName>BDSM2</teamName>
+			<configFile>spacesettlersinit.xml</configFile>
 		</HighLevelTeamConfig>		
 	</teams>
 
@@ -54,7 +54,7 @@
 			<boundingBoxLRY>740</boundingBoxLRY>
 		</BaseConfig>
 		<BaseConfig>
-			<teamName>Team2</teamName>
+			<teamName>BDSM2</teamName>
 			<fixedLocation>true</fixedLocation>
 			<x>900</x>
 			<y>540</y>
@@ -86,7 +86,7 @@
 			</startY>
 		</FlagConfig>
 		<FlagConfig>
-			<teamName>Team2</teamName>
+			<teamName>BDSM2</teamName>
 			<startX>
 				<int>1200</int>
 				<int>1250</int>

@@ -299,18 +299,103 @@ public class BDSMFlagCollector extends TeamClient {
 	private AbstractAction GetResoruces(Toroidal2DPhysics space, Ship s) 
 	{
 		Asteroid asteroid = pickHighestValueNearestFreeAsteroid(space, s);
-		AbstractAction newAction = null;
+		AbstractAction action = null;
 		if (asteroid != null) {
 			asteroidToShipMap.put(asteroid.getId(), s);
-			newAction = new BDSMMoveToObjectAction(space, s.getPosition(), asteroid, asteroid.getPosition().getTranslationalVelocity());
+	
+			//A* Attempt.
+			if(timeSincePlan >= 20) 
+			{
+				s.setCurrentAction(null); //resets current step to null so it is able to update step
+				//reset time since plan;
+				timeSincePlan = 0;
+				
+				//Clean up hash maps for new data.
+				if(aStarCurrentPath.get(s.getId()) != null)
+					aStarCurrentPath.remove(s.getId());
+				if(aStarCurrentSearchTree.get(s.getId()) != null)
+					aStarCurrentSearchTree.remove(s.getId());
+				if(aStarPointsToVisit.get(s.getId()) != null)
+					aStarPointsToVisit.remove(s.getId());
+				
+				//Current path which is assoicated with with a ship
+				aStarCurrentPath.put(s.getId(), AStarGraph.getPathTo(s,  asteroid, space)); //Will get the current path that a* has chosen
+				//Current tree thats associated with a ship
+				aStarCurrentSearchTree.put(s.getId(), AStarGraph.getSearchTree());
+				//Will have a list of linked list position associated with a ship ID
+				aStarPointsToVisit.put(s.getId(), aStarCurrentPath.get(s.getId()).getPositions());
+			}
+			//increase time since plan.
+			else
+				timeSincePlan++;
+			
+			if (aStarPointsToVisit.get(s.getId()) != null)
+			{
+				if(!pointsToVisit.isEmpty() && s.getCurrentAction().isMovementFinished(space))
+				{	
+					Position newPosition = new Position(aStarPointsToVisit.get(s.getId()).getFirst().getX(),aStarPointsToVisit.get(s.getId()).getFirst().getY());
+					action = new BDSMMoveAction(space, s.getPosition(), newPosition);
+					aStarPointsToVisit.get(s.getId()).poll();//pops the top
+				}
+				else
+				{
+					aStarPointsToVisit.get(s.getId()).poll();
+				}
+			}
+			else
+				action = new BDSMMoveToObjectAction(space, s.getPosition(), asteroid, asteroid.getPosition().getTranslationalVelocity());
 		}
-		return newAction;
+		
+		return action;
 	}
 
 	//Take resources to base case.
 	private AbstractAction DumpResources(Toroidal2DPhysics space, Ship s) {
 		Base base = findNearestBase(space, s);
-		AbstractAction action = new MoveToObjectAction(space, s.getPosition(), base);
+		AbstractAction action = null;
+		
+		//A* Attempt.
+		if(timeSincePlan >= 20) 
+		{
+			s.setCurrentAction(null); //resets current step to null so it is able to update step
+			//reset time since plan;
+			timeSincePlan = 0;
+			
+			//Clean up hash maps for new data.
+			if(aStarCurrentPath.get(s.getId()) != null)
+				aStarCurrentPath.remove(s.getId());
+			if(aStarCurrentSearchTree.get(s.getId()) != null)
+				aStarCurrentSearchTree.remove(s.getId());
+			if(aStarPointsToVisit.get(s.getId()) != null)
+				aStarPointsToVisit.remove(s.getId());
+			
+			//Current path which is assoicated with with a ship
+			aStarCurrentPath.put(s.getId(), AStarGraph.getPathTo(s,  base, space)); //Will get the current path that a* has chosen
+			//Current tree thats associated with a ship
+			aStarCurrentSearchTree.put(s.getId(), AStarGraph.getSearchTree());
+			//Will have a list of linked list position associated with a ship ID
+			aStarPointsToVisit.put(s.getId(), aStarCurrentPath.get(s.getId()).getPositions());
+		}
+		//increase time since plan.
+		else
+			timeSincePlan++;
+		
+		if (aStarPointsToVisit.get(s.getId()) != null)
+		{
+			if(!pointsToVisit.isEmpty() && s.getCurrentAction().isMovementFinished(space))
+			{	
+				Position newPosition = new Position(aStarPointsToVisit.get(s.getId()).getFirst().getX(),aStarPointsToVisit.get(s.getId()).getFirst().getY());
+				action = new BDSMMoveAction(space, s.getPosition(), newPosition);
+				aStarPointsToVisit.get(s.getId()).poll();//pops the top
+			}
+			else
+			{
+				aStarPointsToVisit.get(s.getId()).poll();
+			}
+		}
+		else
+			action = new MoveToObjectAction(space, s.getPosition(), base);
+		
 		aimingForBase.put(s.getId(), true);
 		return action;
 	}
@@ -318,7 +403,50 @@ public class BDSMFlagCollector extends TeamClient {
 	//capture the enemy flag.
 	private AbstractAction CaptureFlag(Toroidal2DPhysics space, Ship s) {
 		Flag enemyFlag = getEnemyFlag(space);
-		AbstractAction action = new BDSMMoveAction(space, s.getPosition(), enemyFlag.getPosition());
+		AbstractAction action = null;
+		
+		//A* Attempt.
+		if(timeSincePlan >= 20) 
+		{
+			s.setCurrentAction(null); //resets current step to null so it is able to update step
+			//reset time since plan;
+			timeSincePlan = 0;
+			
+			//Clean up hash maps for new data.
+			if(aStarCurrentPath.get(s.getId()) != null)
+				aStarCurrentPath.remove(s.getId());
+			if(aStarCurrentSearchTree.get(s.getId()) != null)
+				aStarCurrentSearchTree.remove(s.getId());
+			if(aStarPointsToVisit.get(s.getId()) != null)
+				aStarPointsToVisit.remove(s.getId());
+			
+			//Current path which is assoicated with with a ship
+			aStarCurrentPath.put(s.getId(), AStarGraph.getPathTo(s,  enemyFlag, space)); //Will get the current path that a* has chosen
+			//Current tree thats associated with a ship
+			aStarCurrentSearchTree.put(s.getId(), AStarGraph.getSearchTree());
+			//Will have a list of linked list position associated with a ship ID
+			aStarPointsToVisit.put(s.getId(), aStarCurrentPath.get(s.getId()).getPositions());
+		}
+		//increase time since plan.
+		else
+			timeSincePlan++;
+		
+		if (aStarPointsToVisit.get(s.getId()) != null)
+		{
+			if(!pointsToVisit.isEmpty() && s.getCurrentAction().isMovementFinished(space))
+			{	
+				Position newPosition = new Position(aStarPointsToVisit.get(s.getId()).getFirst().getX(),aStarPointsToVisit.get(s.getId()).getFirst().getY());
+				action = new BDSMMoveAction(space, s.getPosition(), newPosition);
+				aStarPointsToVisit.get(s.getId()).poll();//pops the top
+			}
+			else
+			{
+				aStarPointsToVisit.get(s.getId()).poll();
+			}
+		}
+		else
+			action = new BDSMMoveAction(space, s.getPosition(), enemyFlag.getPosition());
+		
 		return action;
 	}
 
@@ -326,24 +454,75 @@ public class BDSMFlagCollector extends TeamClient {
 	private AbstractAction ReturnFlag(Toroidal2DPhysics space, Ship s) 
 	{
 		Base base = findNearestBase(space, s);
-		AbstractAction action = new MoveToObjectAction(space, s.getPosition(), base);
-		aimingForBase.put(s.getId(), true);
-		return action;
-	}
-
-	//get energy action case.
-	private AbstractAction getGetEnergyAction(Toroidal2DPhysics space, Ship s) 
-	{
-		// TODO find energy source, get A* path, assign action
-		
-		Beacon beacon = pickNearestBeacon(space, s);
 		AbstractAction action = null;
+		
 		//A* Attempt.
 		if(timeSincePlan >= 20) 
 		{
 			s.setCurrentAction(null); //resets current step to null so it is able to update step
 			//reset time since plan;
 			timeSincePlan = 0;
+			
+			//Clean up hash maps for new data.
+			if(aStarCurrentPath.get(s.getId()) != null)
+				aStarCurrentPath.remove(s.getId());
+			if(aStarCurrentSearchTree.get(s.getId()) != null)
+				aStarCurrentSearchTree.remove(s.getId());
+			if(aStarPointsToVisit.get(s.getId()) != null)
+				aStarPointsToVisit.remove(s.getId());
+			
+			//Current path which is assoicated with with a ship
+			aStarCurrentPath.put(s.getId(), AStarGraph.getPathTo(s,  base, space)); //Will get the current path that a* has chosen
+			//Current tree thats associated with a ship
+			aStarCurrentSearchTree.put(s.getId(), AStarGraph.getSearchTree());
+			//Will have a list of linked list position associated with a ship ID
+			aStarPointsToVisit.put(s.getId(), aStarCurrentPath.get(s.getId()).getPositions());
+		}
+		//increase time since plan.
+		else
+			timeSincePlan++;
+		
+		if (aStarPointsToVisit.get(s.getId()) != null)
+		{
+			if(!pointsToVisit.isEmpty() && s.getCurrentAction().isMovementFinished(space))
+			{	
+				Position newPosition = new Position(aStarPointsToVisit.get(s.getId()).getFirst().getX(),aStarPointsToVisit.get(s.getId()).getFirst().getY());
+				action = new BDSMMoveAction(space, s.getPosition(), newPosition);
+				aStarPointsToVisit.get(s.getId()).poll();//pops the top
+			}
+			else
+			{
+				aStarPointsToVisit.get(s.getId()).poll();
+			}
+		}
+		else
+			action = new MoveToObjectAction(space, s.getPosition(), base);
+
+		aimingForBase.put(s.getId(), true);
+		return action;
+	}
+
+	//get energy action case.
+	private AbstractAction getGetEnergyAction(Toroidal2DPhysics space, Ship s) 
+	{	
+		Beacon beacon = pickNearestBeacon(space, s);
+		AbstractAction action = null;
+		
+		//A* Attempt.
+		if(timeSincePlan >= 20) 
+		{
+			s.setCurrentAction(null); //resets current step to null so it is able to update step
+			//reset time since plan;
+			timeSincePlan = 0;
+			
+			//Clean up hash maps for new data.
+			if(aStarCurrentPath.get(s.getId()) != null)
+				aStarCurrentPath.remove(s.getId());
+			if(aStarCurrentSearchTree.get(s.getId()) != null)
+				aStarCurrentSearchTree.remove(s.getId());
+			if(aStarPointsToVisit.get(s.getId()) != null)
+				aStarPointsToVisit.remove(s.getId());
+			
 			//Current path which is assoicated with with a ship
 			aStarCurrentPath.put(s.getId(), AStarGraph.getPathTo(s,  beacon, space)); //Will get the current path that a* has chosen
 			//Current tree thats associated with a ship
@@ -360,8 +539,6 @@ public class BDSMFlagCollector extends TeamClient {
 			if(!pointsToVisit.isEmpty() && s.getCurrentAction().isMovementFinished(space))
 			{	
 				Position newPosition = new Position(aStarPointsToVisit.get(s.getId()).getFirst().getX(),aStarPointsToVisit.get(s.getId()).getFirst().getY());
-				//Position newPosition = new Position(pointsToVisit.getFirst().getX(),
-				//		pointsToVisit.getFirst().getY());
 				action = new BDSMMoveAction(space, s.getPosition(), newPosition);
 				aStarPointsToVisit.get(s.getId()).poll();//pops the top
 			}

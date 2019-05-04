@@ -44,7 +44,7 @@ public class BDSMFlagCollector extends TeamClient {
 	HashMap <UUID, Boolean> aimingForBase;
 	HashMap <UUID, Boolean> justHitBase;
 	HashMap <UUID, Boolean> goingForCore;
-	HashMap	<UUID,AStarPath> aStarCurrentPath = null;
+	HashMap	<UUID,AStarPath> aStarCurrentPath;
 	HashMap	<UUID,LinkedList<Position>> aStarPointsToVisit;
 	HashMap	<UUID,LinkedList<AStarPath>> aStarCurrentSearchTree;
 	HashMap	<UUID,Position> guardingPositions;
@@ -95,7 +95,7 @@ public class BDSMFlagCollector extends TeamClient {
 		HashMap<UUID, AbstractAction> actions = new HashMap<UUID, AbstractAction>();
 		
 		// Check for replan
-		boolean replan = false;
+		boolean replan = true;
 		LinkedList<Ship> ships = new LinkedList<>();
 		LinkedList<Base> bases = new LinkedList<>();
 		for(AbstractActionableObject obj: actionableObjects) {
@@ -113,10 +113,11 @@ public class BDSMFlagCollector extends TeamClient {
 		// If replan needed, call planner for all objects
 		if(replan) {
 			for(Ship s: ships) {
+				
 				// Plan
 				BDSM_MultiAgentPlanner planner = new BDSM_MultiAgentPlanner(space, actionableObjects, s, BDSM_ShipRole.ResourceBoy);
 				BDSM_PlanActions highLevelAction = planner.getNextAction();
-				
+			
 				// Parse _Actions member
 				switch(highLevelAction) {
 				case GetEnergy:
@@ -149,7 +150,7 @@ public class BDSMFlagCollector extends TeamClient {
 					
 				// Yikes don't want to be here.
 				default:
-					
+					System.out.println("DiDNT get anything :(");
 					break;
 				}
 			}
@@ -308,7 +309,7 @@ public class BDSMFlagCollector extends TeamClient {
 		}
 		
 		//Need to check if we are near base
-		double distanceFromSpot = space.findShortestDistance(flagGuard1.getPosition(),guardingPositions.get(s.getId()));
+		double distanceFromSpot = space.findShortestDistance(s.getPosition(),guardingPositions.get(s.getId()));
 		
 		//distance is greater than 100 return back to base.
 		//Not a* due to the fact it only deals with objects
@@ -340,7 +341,7 @@ public class BDSMFlagCollector extends TeamClient {
 			asteroidToShipMap.put(asteroid.getId(), s);
 	
 			//A* Attempt.
-			if(timeSincePlan >= 20) 
+			if(timeSincePlan >= 20 ) 
 			{
 				s.setCurrentAction(null); //resets current step to null so it is able to update step
 				//reset time since plan;
@@ -367,16 +368,13 @@ public class BDSMFlagCollector extends TeamClient {
 			
 			if (aStarPointsToVisit.get(s.getId()) != null)
 			{
-				if(!pointsToVisit.isEmpty() && s.getCurrentAction().isMovementFinished(space))
+				if(!aStarPointsToVisit.get(s.getId()).isEmpty())
 				{	
 					Position newPosition = new Position(aStarPointsToVisit.get(s.getId()).getFirst().getX(),aStarPointsToVisit.get(s.getId()).getFirst().getY());
 					action = new BDSMMoveAction(space, s.getPosition(), newPosition);
 					aStarPointsToVisit.get(s.getId()).poll();//pops the top
 				}
-				else
-				{
-					aStarPointsToVisit.get(s.getId()).poll();
-				}
+				
 			}
 			else
 				action = new BDSMMoveToObjectAction(space, s.getPosition(), asteroid, asteroid.getPosition().getTranslationalVelocity());
@@ -418,7 +416,7 @@ public class BDSMFlagCollector extends TeamClient {
 		
 		if (aStarPointsToVisit.get(s.getId()) != null)
 		{
-			if(!pointsToVisit.isEmpty() && s.getCurrentAction().isMovementFinished(space))
+			if(!aStarPointsToVisit.get(s.getId()).isEmpty())
 			{	
 				Position newPosition = new Position(aStarPointsToVisit.get(s.getId()).getFirst().getX(),aStarPointsToVisit.get(s.getId()).getFirst().getY());
 				action = new BDSMMoveAction(space, s.getPosition(), newPosition);
@@ -469,7 +467,7 @@ public class BDSMFlagCollector extends TeamClient {
 		
 		if (aStarPointsToVisit.get(s.getId()) != null)
 		{
-			if(!pointsToVisit.isEmpty() && s.getCurrentAction().isMovementFinished(space))
+			if(!aStarPointsToVisit.get(s.getId()).isEmpty())
 			{	
 				Position newPosition = new Position(aStarPointsToVisit.get(s.getId()).getFirst().getX(),aStarPointsToVisit.get(s.getId()).getFirst().getY());
 				action = new BDSMMoveAction(space, s.getPosition(), newPosition);
@@ -520,7 +518,7 @@ public class BDSMFlagCollector extends TeamClient {
 		
 		if (aStarPointsToVisit.get(s.getId()) != null)
 		{
-			if(!pointsToVisit.isEmpty() && s.getCurrentAction().isMovementFinished(space))
+			if(!aStarPointsToVisit.get(s.getId()).isEmpty())
 			{	
 				Position newPosition = new Position(aStarPointsToVisit.get(s.getId()).getFirst().getX(),aStarPointsToVisit.get(s.getId()).getFirst().getY());
 				action = new BDSMMoveAction(space, s.getPosition(), newPosition);
@@ -572,7 +570,7 @@ public class BDSMFlagCollector extends TeamClient {
 		
 		if (aStarPointsToVisit.get(s.getId()) != null)
 		{
-			if(!pointsToVisit.isEmpty() && s.getCurrentAction().isMovementFinished(space))
+			if(!aStarPointsToVisit.get(s.getId()).isEmpty())
 			{	
 				Position newPosition = new Position(aStarPointsToVisit.get(s.getId()).getFirst().getX(),aStarPointsToVisit.get(s.getId()).getFirst().getY());
 				action = new BDSMMoveAction(space, s.getPosition(), newPosition);
@@ -886,7 +884,10 @@ public class BDSMFlagCollector extends TeamClient {
 		aimingForBase = new HashMap<UUID, Boolean>();
 		justHitBase = new HashMap<UUID, Boolean>();
 		goingForCore = new HashMap<UUID, Boolean>();
-		
+		aStarCurrentPath = new HashMap<UUID,AStarPath>();
+		aStarPointsToVisit = new HashMap<UUID,LinkedList<Position>>();
+		aStarCurrentSearchTree = new HashMap	<UUID,LinkedList<AStarPath>>();
+		guardingPositions = new HashMap	<UUID,Position>();
 	}
 
 	/**

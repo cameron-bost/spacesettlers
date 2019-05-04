@@ -158,7 +158,7 @@ public class BDSM_PlanState {
 	 */
 	boolean isGoalState() {
 		boolean isGoal = false;
-		for(int i = 1; i<=4; i++) {
+		for(int i = 1; i<=3; i++) {
 			isGoal &= (isGuarded(bases[i], ships[i], baseLocations[i]));
 		}
 		return isGoal;

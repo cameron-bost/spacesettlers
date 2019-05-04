@@ -16,10 +16,10 @@ import spacesettlers.simulator.Toroidal2DPhysics;
 public enum BDSM_PlanActions {
 	GetEnergy, ReturnFlag,				// Universal actions
 	DeliverFlag, CaptureFlag, Guard,	// Flag collector actions
-	DumpResources, GetResoruces,		// Resource collector actions
+	DumpResources, GetResources,		// Resource collector actions
 	DoNothing;
 	
-	static BDSM_PlanActions[] allActions = new BDSM_PlanActions[] {GetEnergy, ReturnFlag, DeliverFlag, CaptureFlag, Guard, DumpResources, GetResoruces};
+	static BDSM_PlanActions[] allActions = new BDSM_PlanActions[] {GetEnergy, ReturnFlag, DeliverFlag, CaptureFlag, Guard, DumpResources, GetResources};
 	
 	/**
 	 * Retrieve all possible actions as array
@@ -120,6 +120,12 @@ public enum BDSM_PlanActions {
 		
 	}
 
+	/**
+	 * Captures an enemy flag
+	 * 
+	 * @author Bost-Atkinson Digital Space Mining (BDSM), LLC
+	 * @version 0.4
+	 */
 	static class CaptureFlagAction extends BDSM_PlanAction{
 
 		StateShip actor;
@@ -161,6 +167,242 @@ public enum BDSM_PlanActions {
 		
 	}
 	
+	/**
+	 * Simulates delivering a captured enemy flag
+	 * 
+	 * @author Bost-Atkinson Digital Space Mining (BDSM), LLC
+	 * @version 0.4
+	 */
+	static class DeliverFlagAction extends BDSM_PlanAction{
+
+		StateShip ship;
+		DeliverFlagAction(BDSM_PlanState _state, UUID _actorId) {
+			super(_state, _actorId);
+			ship = state.getStateShipById(actorId);
+		}
+
+		@Override
+		protected boolean _preCondition() {
+			return ship.hasFlag && ship.isAlive && !ship.lowEnergy;
+		}
+
+		@Override
+		public boolean postCondition(Toroidal2DPhysics space) {
+			// TODO Auto-generated method stub
+			return false;
+		}
+
+		@Override
+		public BDSM_PlanActions getAction() {
+			return DeliverFlag;
+		}
+
+		@Override
+		BDSM_PlanState applyAction() {
+			ship.hasFlag = false;
+			return state;
+		}
+
+		@Override
+		public LinkedList<? extends BDSM_PlanAction> genAllActions(BDSM_PlanState state) {
+			LinkedList<DeliverFlagAction> ret = new LinkedList<>();
+			for(StateShip sShip: state.ships) {
+				ret.add(new DeliverFlagAction(state, sShip.id));
+			}
+			return ret;
+		}
+		
+	}
+	
+	/**
+	 * Simulates dropping off resources
+	 * 
+	 * @author Bost-Atkinson Digital Space Mining (BDSM), LLC
+	 * @version 0.4
+	 */
+	static class DumpResourcesAction extends BDSM_PlanAction{
+
+		StateShip ship;
+		DumpResourcesAction(BDSM_PlanState _state, UUID _actorId) {
+			super(_state, _actorId);
+			ship = state.getStateShipById(actorId);
+		}
+
+		@Override
+		protected boolean _preCondition() {
+			return ship.isAlive && !ship.lowEnergy && ship.isLoaded;
+		}
+
+		@Override
+		public boolean postCondition(Toroidal2DPhysics space) {
+			// TODO Auto-generated method stub
+			return false;
+		}
+
+		@Override
+		public BDSM_PlanActions getAction() {
+			return DumpResources;
+		}
+
+		@Override
+		BDSM_PlanState applyAction() {
+			ship.isLoaded = false;
+			ship.location = BDSM_PlanState.StateLocation.Home;
+			return state;
+		}
+
+		@Override
+		public LinkedList<? extends BDSM_PlanAction> genAllActions(BDSM_PlanState state) {
+			LinkedList<DumpResourcesAction> ret = new LinkedList<>();
+			for(StateShip sShip: state.ships) {
+				ret.add(new DumpResourcesAction(state, sShip.id));
+			}
+			return ret;
+		}
+		
+	}
+	
+	/**
+	 * Simulates mining resources
+	 * 
+	 * @author Bost-Atkinson Digital Space Mining (BDSM), LLC
+	 * @version 0.4
+	 */
+	static class GetResourcesAction extends BDSM_PlanAction{
+
+		StateShip ship;
+		GetResourcesAction(BDSM_PlanState _state, UUID _actorId) {
+			super(_state, _actorId);
+			ship = state.getStateShipById(actorId);
+		}
+
+		@Override
+		protected boolean _preCondition() {
+			return ship.isAlive && !ship.lowEnergy && !ship.isLoaded;
+		}
+
+		@Override
+		public boolean postCondition(Toroidal2DPhysics space) {
+			// TODO Auto-generated method stub
+			return false;
+		}
+
+		@Override
+		public BDSM_PlanActions getAction() {
+			return GetResources;
+		}
+
+		@Override
+		BDSM_PlanState applyAction() {
+			ship.isLoaded = true;
+			return state;
+		}
+
+		@Override
+		public LinkedList<? extends BDSM_PlanAction> genAllActions(BDSM_PlanState state) {
+			LinkedList<GetResourcesAction> ret = new LinkedList<>();
+			for(StateShip sShip: state.ships) {
+				ret.add(new GetResourcesAction(state, sShip.id));
+			}
+			return ret;
+		}
+		
+	}
+	
+	/**
+	 * Simulates ordering a ship to guard a base.
+	 * 
+	 * @author Bost-Atkinson Digital Space Mining (BDSM), LLC
+	 * @version 0.4
+	 */
+	static class GuardAction extends BDSM_PlanAction{
+
+		StateShip ship;
+		GuardAction(BDSM_PlanState _state, UUID _actorId) {
+			super(_state, _actorId);
+			ship = state.getStateShipById(actorId);
+		}
+
+		@Override
+		protected boolean _preCondition() {
+			return ship.isAlive && ship.isGuard;
+		}
+
+		@Override
+		public boolean postCondition(Toroidal2DPhysics space) {
+			// TODO Auto-generated method stub
+			return false;
+		}
+
+		@Override
+		public BDSM_PlanActions getAction() {
+			return Guard;
+		}
+
+		@Override
+		BDSM_PlanState applyAction() {
+			ship.location = BDSM_PlanState.StateLocation.RedCenter;
+			return state;
+		}
+
+		@Override
+		public LinkedList<? extends BDSM_PlanAction> genAllActions(BDSM_PlanState state) {
+			LinkedList<GuardAction> ret = new LinkedList<>();
+			for(StateShip sShip: state.ships) {
+				ret.add(new GuardAction(state, sShip.id));
+			}
+			return ret;
+		}
+		
+	}
+	
+	/**
+	 * Simulates returning the friendly flag.
+	 * 
+	 * @author Bost-Atkinson Digital Space Mining (BDSM), LLC
+	 * @version 0.4
+	 */
+	static class ReturnFlagAction extends BDSM_PlanAction{
+
+		StateShip ship;
+		ReturnFlagAction(BDSM_PlanState _state, UUID _actorId) {
+			super(_state, _actorId);
+			ship = state.getStateShipById(actorId);
+		}
+
+		@Override
+		protected boolean _preCondition() {
+			return ship.isAlive && !ship.hasFlag && !ship.lowEnergy && !ship.isLoaded;
+		}
+
+		@Override
+		public boolean postCondition(Toroidal2DPhysics space) {
+			// TODO Auto-generated method stub
+			return false;
+		}
+
+		@Override
+		public BDSM_PlanActions getAction() {
+			return ReturnFlag;
+		}
+
+		@Override
+		BDSM_PlanState applyAction() {
+			ship.location = BDSM_PlanState.StateLocation.Home;
+			return state;
+		}
+
+		@Override
+		public LinkedList<? extends BDSM_PlanAction> genAllActions(BDSM_PlanState state) {
+			LinkedList<ReturnFlagAction> ret = new LinkedList<>();
+			for(StateShip sShip: state.ships) {
+				ret.add(new ReturnFlagAction(state, sShip.id));
+			}
+			return ret;
+		}
+		
+	}
+	
 	public static BDSM_PlanAction lookupAction(BDSM_PlanActions actionPlan, BDSM_PlanState state, UUID actor) {
 		switch(actionPlan) {
 		case GetEnergy:
@@ -168,17 +410,17 @@ public enum BDSM_PlanActions {
 		case CaptureFlag:
 			return new CaptureFlagAction(state, actor);
 		case DeliverFlag:
-			break;
+			return new DeliverFlagAction(state, actor);
 		case DoNothing:
 			return new DoNothingAction(state, actor);
 		case DumpResources:
-			break;
-		case GetResoruces:
-			break;
+			return new DumpResourcesAction(state, actor);
+		case GetResources:
+			return new GetResourcesAction(state, actor);
 		case Guard:
-			break;
+			return new GuardAction(state, actor);
 		case ReturnFlag:
-			break;
+			return new ReturnFlagAction(state, actor);
 		default:
 			System.out.println("<PlanActions.lookupaction> - Invalid enum element given.");
 			break;

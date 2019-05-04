@@ -136,7 +136,7 @@ public class BDSMFlagCollector extends TeamClient {
 					actions.put(s.getId(), DumpResources(space, s));
 					break;
 				
-				case GetResoruces:
+				case GetResources:
 					actions.put(s.getId(), GetResoruces(space, s));
 					break;
 					

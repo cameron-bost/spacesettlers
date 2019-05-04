@@ -29,13 +29,13 @@ import spacesettlers.simulator.Toroidal2DPhysics;
 import spacesettlers.utilities.Position;
 
 /**
- * A pacifist flag collector client that handles multiple agents in the team.  The heuristic works as follows:
+ * A high-level behavior asteroid collector. This collector uses planning to determine the next action.
+ * once it finds its action it will execute that action using a star to try to reach the destination.
+ * the ultimate goal of this asteroid collector is to show planning and multi agent coordination.
  * 
- *   The nearest and healthy ship is assigned to go get the flag and bring it back.
- *   The other ships are assigned to resource collection.
- *   Resources are used to buy additional ships and bases (with the idea that bases are better to have near the 
- *   enemy flag locations).
- * 
+ * Multi-agent is accomplished by once a ship becomes a guard ship it will only try to collect the flag.
+ * it will determine which of the ships is closer to the flag leaving one in the guard position and the other one to collect
+ * the flag,also if there is an extra ship it will become a resource collector.
  * @author Bost-Atkinson Digital Space Mining (BDSM), LLC
  * @version 0.4
  */
@@ -123,7 +123,7 @@ public class BDSMFlagCollector extends TeamClient {
 				// Plan
 				BDSM_MultiAgentPlanner planner = new BDSM_MultiAgentPlanner(space, actionableObjects, s, BDSM_ShipRole.ResourceBoy);
 				BDSM_PlanActions highLevelAction = planner.getNextAction();
-			
+				System.out.println(planner.getNextAction());
 				// Parse _Actions member
 				switch(highLevelAction) {
 				case GetEnergy:
@@ -163,143 +163,6 @@ public class BDSMFlagCollector extends TeamClient {
 		}
 		
 		return actions;
-		
-		/**
-		HashMap<UUID, AbstractAction> actions = new HashMap<UUID, AbstractAction>();
-		Ship flagShip;
-
-		// get the flag carrier, if we have one
-
-		flagShip = getFlagCarrier(space, actionableObjects);
-
-		// we don't have a ship carrying a flag, so find the best choice (if it exists)
-		if (flagShip == null) 
-		{
-			flagShip = findHealthiestShipNearFlag(space, actionableObjects);
-		}
-
-		// loop through each ship and assign it to either get energy (if needed for health) or
-		// resources (as long as it isn't the flagShip)
-		for (AbstractObject actionable :  actionableObjects) {
-			if (actionable instanceof Ship) {
-				Ship ship = (Ship) actionable;
-
-				AbstractAction action = null;
-
-				if (flagShip != null && ship.equals(flagShip)) {
-					if (flagShip.isCarryingFlag())
-					{
-						Base base = findNearestBase(space, ship);
-						action = new MoveToObjectAction(space, ship.getPosition(), base);
-						aimingForBase.put(ship.getId(), true);
-					} 
-					else 
-					{
-						Flag enemyFlag = getEnemyFlag(space);
-						/*
-						 * ASTAR
-						 *
-						if(timeSincePlan >= 20) {
-							ship.setCurrentAction(null); //resets current step to null so it is able to update step
-							timeSincePlan = 0; // resets times plan back to 0
-							currentPath = AStarGraph.getPathTo(flagShip,  enemyFlag, space); //Will get the current path that a* has chosen
-							currentSearchTree = AStarGraph.getSearchTree(); //Returns a search tree 
-							pointsToVisit = new LinkedList<Position>(currentPath.getPositions()); // Will contain all the points for a*
-						}
-						else
-						{
-							timeSincePlan++;
-						}
-						
-						// Call points to create a new action to move to that object.
-						if (pointsToVisit != null && flagShip.getCurrentAction() != null)
-						{
-							if(!pointsToVisit.isEmpty() && flagShip.getCurrentAction().isMovementFinished(space))
-							{	
-								Position newPosition = new Position(pointsToVisit.getFirst().getX(),pointsToVisit.getFirst().getY());
-								action = new BDSMMoveAction(space, ship.getPosition(), newPosition);
-								pointsToVisit.poll();//pops the top
-							}
-							else
-							{
-								pointsToVisit.poll();
-							}
-						}
-						else
-							action = new MoveToObjectAction(space, ship.getPosition(), enemyFlag,enemyFlag.getPosition().getTranslationalVelocity());
-					}
-				} 
-				//Will allow if flag guard 1 is collected to.
-				//1. Return flag if it has it
-				//2. Collect flag with a certain distance.
-				//3. go back to its post if flag is not there
-				//4. Do noting if all the above is true.
-				else if (flagGuard1 != null && ship.equals(flagGuard1) && !ship.equals(flagShip))
-				{
-						Flag enemyFlag = getEnemyFlag(space);
-						double flagdistance = space.findShortestDistance(flagGuard1.getPosition(),enemyFlag.getPosition());
-						double distanceFromSpot = space.findShortestDistance(flagGuard1.getPosition(),guardPosition1);
-						
-						if (flagGuard1.isCarryingFlag())
-						{
-							Base base = findNearestBase(space, ship);
-							action = new MoveToObjectAction(space, ship.getPosition(), base);
-							aimingForBase.put(ship.getId(), true);
-						} 
-						if(flagdistance < 350)
-						{
-							action = new MoveToObjectAction(space, flagGuard1.getPosition(), enemyFlag,enemyFlag.getPosition().getTranslationalVelocity());
-						}
-						
-						if(distanceFromSpot > 150)
-						{
-							action = new BDSMMoveAction(space,flagGuard1.getPosition(),guardPosition1);
-						}
-						
-				}
-				else if (flagGuard2 != null && ship.equals(flagGuard2))
-				{
-						Flag enemyFlag = getEnemyFlag(space);
-						double distance = space.findShortestDistance(flagGuard2.getPosition(),enemyFlag.getPosition());
-						if (flagGuard2.isCarryingFlag())
-						{
-							Base base = findNearestBase(space, ship);
-							action = new MoveToObjectAction(space, ship.getPosition(), base);
-							aimingForBase.put(ship.getId(), true);
-						} 
-						if(distance < 75)
-						{
-							
-							action = new MoveToObjectAction(space, ship.getPosition(), enemyFlag,enemyFlag.getPosition().getTranslationalVelocity());
-						}
-						else if(flagGuard2.getPosition() != guardPosition2)
-						{
-							action = new BDSMMoveAction(space,flagGuard1.getPosition(),guardPosition2);
-						}
-
-						else
-							actions.put(actionable.getId(), new DoNothingAction());
-						
-				}
-				else 
-				{
-					action = getAsteroidCollectorAction(space, ship);
-				}
-
-				// save the action for this ship
-				actions.put(ship.getId(), action);
-			} else if(actionable instanceof Drone) {
-				Drone drone = (Drone) actionable;
-				AbstractAction action;
-
-				action = drone.getDroneAction(space); //Or make up some action of your own! This just adds the default action back to the drone.
-				actions.put(drone.getId(), action);
-			} else {
-				// bases do nothing
-				actions.put(actionable.getId(), new DoNothingAction());
-			}
-		} 
-		return actions;*/
 	}
 	
 	//Do Guarding case.

@@ -72,8 +72,8 @@ public class BDSM_MultiAgentPlanner {
 		
 		// Apply actor action to overall state
 		BDSM_PlanAction actortion = bestPath.getNextActionForActor(actorId);
-		actortion.setState(this.state);
-		actortion.applyAction();
+		actortion.setState(state);
+		state = actortion.applyAction();
 		return actortion.getAction();
 	}
 	

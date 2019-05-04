@@ -113,7 +113,9 @@ public enum BDSM_PlanActions {
 		public LinkedList<? extends BDSM_PlanAction> genAllActions(BDSM_PlanState state) {
 			LinkedList<DoNothingAction> ret = new LinkedList<>();
 			for(UUID shipId: state.idGameShipMap.keySet()) {
-				ret.add(new DoNothingAction(state, shipId));
+				if(shipId != null) {
+					ret.add(new DoNothingAction(state, shipId));
+				}
 			}
 			return ret;
 		}
@@ -160,7 +162,9 @@ public enum BDSM_PlanActions {
 		public LinkedList<? extends BDSM_PlanAction> genAllActions(BDSM_PlanState state) {
 			LinkedList<CaptureFlagAction> ret = new LinkedList<>();
 			for(StateShip sShip: state.ships) {
-				ret.add(new CaptureFlagAction(state, sShip.id));
+				if(sShip.id != null) {
+					ret.add(new CaptureFlagAction(state, sShip.id));
+				}
 			}
 			return ret;
 		}
@@ -207,7 +211,9 @@ public enum BDSM_PlanActions {
 		public LinkedList<? extends BDSM_PlanAction> genAllActions(BDSM_PlanState state) {
 			LinkedList<DeliverFlagAction> ret = new LinkedList<>();
 			for(StateShip sShip: state.ships) {
-				ret.add(new DeliverFlagAction(state, sShip.id));
+				if(sShip.id != null) {
+					ret.add(new DeliverFlagAction(state, sShip.id));
+				}
 			}
 			return ret;
 		}
@@ -255,7 +261,9 @@ public enum BDSM_PlanActions {
 		public LinkedList<? extends BDSM_PlanAction> genAllActions(BDSM_PlanState state) {
 			LinkedList<DumpResourcesAction> ret = new LinkedList<>();
 			for(StateShip sShip: state.ships) {
-				ret.add(new DumpResourcesAction(state, sShip.id));
+				if(sShip.id != null) {
+					ret.add(new DumpResourcesAction(state, sShip.id));
+				}
 			}
 			return ret;
 		}
@@ -302,7 +310,9 @@ public enum BDSM_PlanActions {
 		public LinkedList<? extends BDSM_PlanAction> genAllActions(BDSM_PlanState state) {
 			LinkedList<GetResourcesAction> ret = new LinkedList<>();
 			for(StateShip sShip: state.ships) {
-				ret.add(new GetResourcesAction(state, sShip.id));
+				if(sShip.id != null) {
+					ret.add(new GetResourcesAction(state, sShip.id));
+				}
 			}
 			return ret;
 		}
@@ -349,7 +359,9 @@ public enum BDSM_PlanActions {
 		public LinkedList<? extends BDSM_PlanAction> genAllActions(BDSM_PlanState state) {
 			LinkedList<GuardAction> ret = new LinkedList<>();
 			for(StateShip sShip: state.ships) {
-				ret.add(new GuardAction(state, sShip.id));
+				if(sShip.id != null) {
+					ret.add(new GuardAction(state, sShip.id));
+				}
 			}
 			return ret;
 		}
@@ -396,7 +408,9 @@ public enum BDSM_PlanActions {
 		public LinkedList<? extends BDSM_PlanAction> genAllActions(BDSM_PlanState state) {
 			LinkedList<ReturnFlagAction> ret = new LinkedList<>();
 			for(StateShip sShip: state.ships) {
-				ret.add(new ReturnFlagAction(state, sShip.id));
+				if(sShip.id != null) {
+					ret.add(new ReturnFlagAction(state, sShip.id));
+				}
 			}
 			return ret;
 		}

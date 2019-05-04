@@ -96,7 +96,7 @@ public class BDSM_MultiAgentPlanner {
 		
 		public BDSM_PlanAction getNextActionForActor(UUID actorId) {
 			return actionMap.containsKey(actorId) ? actionMap.get(actorId)
-					: new BDSM_PlanActions.BDSM_DoNothingAction(state, actorId);
+					: new BDSM_PlanActions.DoNothingAction(state, actorId);
 		}
 
 		/**

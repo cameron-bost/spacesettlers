@@ -83,9 +83,9 @@ public enum BDSM_PlanActions {
 	 * 
 	 * @author Bost-Atkinson Digital Space Mining (BDSM), LLC
 	 */
-	static class BDSM_DoNothingAction extends BDSM_PlanAction{
+	static class DoNothingAction extends BDSM_PlanAction{
 
-		BDSM_DoNothingAction(BDSM_PlanState _state, UUID actorId) {
+		DoNothingAction(BDSM_PlanState _state, UUID actorId) {
 			super(_state, actorId);
 		}
 
@@ -111,25 +111,66 @@ public enum BDSM_PlanActions {
 
 		@Override
 		public LinkedList<? extends BDSM_PlanAction> genAllActions(BDSM_PlanState state) {
-			LinkedList<BDSM_DoNothingAction> ret = new LinkedList<>();
+			LinkedList<DoNothingAction> ret = new LinkedList<>();
 			for(UUID shipId: state.idGameShipMap.keySet()) {
-				ret.add(new BDSM_DoNothingAction(state, shipId));
+				ret.add(new DoNothingAction(state, shipId));
 			}
 			return ret;
 		}
 		
 	}
 
+	static class CaptureFlagAction extends BDSM_PlanAction{
+
+		StateShip actor;
+		CaptureFlagAction(BDSM_PlanState _state, UUID _actorId) {
+			super(_state, _actorId);
+			actor = state.getStateShipById(actorId);
+		}
+
+		@Override
+		protected boolean _preCondition() {
+			return !actor.isLoaded && !actor.lowEnergy && actor.isAlive;
+		}
+
+		@Override
+		public boolean postCondition(Toroidal2DPhysics space) {
+			// TODO Auto-generated method stub
+			return false;
+		}
+
+		@Override
+		public BDSM_PlanActions getAction() {
+			return CaptureFlag;
+		}
+
+		@Override
+		BDSM_PlanState applyAction() {
+			actor.hasFlag = true;
+			return state;
+		}
+
+		@Override
+		public LinkedList<? extends BDSM_PlanAction> genAllActions(BDSM_PlanState state) {
+			LinkedList<CaptureFlagAction> ret = new LinkedList<>();
+			for(StateShip sShip: state.ships) {
+				ret.add(new CaptureFlagAction(state, sShip.id));
+			}
+			return ret;
+		}
+		
+	}
+	
 	public static BDSM_PlanAction lookupAction(BDSM_PlanActions actionPlan, BDSM_PlanState state, UUID actor) {
 		switch(actionPlan) {
 		case GetEnergy:
 			return new GetEnergyAction(state, actor);
 		case CaptureFlag:
-			break;
+			return new CaptureFlagAction(state, actor);
 		case DeliverFlag:
 			break;
 		case DoNothing:
-			return new BDSM_DoNothingAction(state, actor);
+			return new DoNothingAction(state, actor);
 		case DumpResources:
 			break;
 		case GetResoruces:
@@ -143,12 +184,18 @@ public enum BDSM_PlanActions {
 			break;
 		}
 
-		return new BDSM_DoNothingAction(state, actor);
+		return new DoNothingAction(state, actor);
 	}
 
 	public static BDSM_PlanAction[] genAllPossibleActions(BDSM_PlanState state, UUID actorId) {
 		LinkedList<BDSM_PlanAction> actionList = new LinkedList<>();
-		
+		for(BDSM_PlanActions actionPlan: allActions) {
+			for(BDSM_PlanAction possibleAction: lookupAction(actionPlan, state, actorId).genAllActions(state)) {
+				if(possibleAction.preCondition()) {
+					actionList.add(possibleAction);
+				}
+			}
+		}
 		return actionList.toArray(new BDSM_PlanAction[actionList.size()]);
 	}
 

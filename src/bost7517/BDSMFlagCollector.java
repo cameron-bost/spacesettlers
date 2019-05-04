@@ -80,16 +80,21 @@ public class BDSMFlagCollector extends TeamClient {
 				if(base.getTeamName().equalsIgnoreCase(getTeamName()) && base.getPosition().getX() < 800 )
 				{
 					baseIsLeft = true;
-					System.out.println("<OUR BASE> - is LEFT!!!");
+					//System.out.println("<OUR BASE> - is LEFT!!!");
 					positionList = new LinkedList<Position>();
-					positionList.add(new Position(1450,300));
-					positionList.add(new Position(1300,900));
-					positionList.add(new Position(1450,500));
+					positionList = new LinkedList<Position>();
+					positionList.add(new Position(300,200));
+					positionList.add(new Position(400,500));
+					positionList.add(new Position(300,700));
 				}
 				if(base.getTeamName().equalsIgnoreCase(getTeamName()) && base.getPosition().getX() > 800 )
 				{
 					baseIsRight = true;
-					System.out.println("<OUR BASE> - is Right!!!");
+					//System.out.println("<OUR BASE> - is Right!!!");
+					positionList = new LinkedList<Position>();
+					positionList.add(new Position(1500,300));
+					positionList.add(new Position(1300,400));
+					positionList.add(new Position(1450,500));
 				}
 			}
 			checkBaseLocation = false;

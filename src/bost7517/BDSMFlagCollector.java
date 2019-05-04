@@ -21,7 +21,6 @@ import spacesettlers.objects.AiCore;
 import spacesettlers.objects.Asteroid;
 import spacesettlers.objects.Base;
 import spacesettlers.objects.Beacon;
-import spacesettlers.objects.Drone;
 import spacesettlers.objects.Flag;
 import spacesettlers.objects.Ship;
 import spacesettlers.objects.powerups.SpaceSettlersPowerupEnum;
@@ -116,8 +115,8 @@ public class BDSMFlagCollector extends TeamClient {
 		if(replan) {
 			for(Ship s: ships) {
 				// Plan
-				BDSM_P4_Planner planner = new BDSM_P4_Planner(space, actionableObjects, s, BDSM_P4_ShipRole.ResourceBoy);
-				BDSM_P4_Actions highLevelAction = planner.getNextAction(space, s);
+				BDSM_MultiAgentPlanner planner = new BDSM_MultiAgentPlanner(space, actionableObjects, s, BDSM_ShipRole.ResourceBoy);
+				BDSM_PlanActions highLevelAction = planner.getNextAction();
 				
 				// Parse _Actions member
 				switch(highLevelAction) {
@@ -302,7 +301,7 @@ public class BDSMFlagCollector extends TeamClient {
 	{
 		AbstractAction	action = null;
 		//If ship is not guarding and needs to be give it the next location in the list and remove it from the list
-		if(guardingPositions.get(s) == null)
+		if(guardingPositions.get(s.getId()) == null)
 		{
 			Position temp = positionList.poll();
 			guardingPositions.put(s.getId(),temp);

@@ -193,6 +193,7 @@ public class BDSM_PlanState {
 		boolean isCollector;
 		BDSM_PlanActions nextAction;
 		UUID id;
+		boolean hasFlag;
 		
 		public StateShip(Ship s, Toroidal2DPhysics space, BDSM_ShipRole role) {
 			super(s.isAlive(), StateLocation.approximateLocation(space, s));
@@ -202,6 +203,7 @@ public class BDSM_PlanState {
 			isLoaded = s.getResources().getTotal() >= AgentUtils.RESOURCE_THRESHOLD;
 			nextAction = null;
 			id = s.getId();
+			hasFlag = s.isCarryingFlag();
 		}
 		
 		public StateShip() {
@@ -212,6 +214,7 @@ public class BDSM_PlanState {
 			isCollector = false;
 			nextAction = null;
 			id = null;
+			hasFlag = false;
 		}
 	}
 	

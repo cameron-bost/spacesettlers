@@ -37,9 +37,8 @@ import spacesettlers.utilities.Position;
  *   Resources are used to buy additional ships and bases (with the idea that bases are better to have near the 
  *   enemy flag locations).
  * 
- * (similar to PassiveHeuritsicAsteroidCollector).  
- *  
- * @author amy
+ * @author Bost-Atkinson Digital Space Mining (BDSM), LLC
+ * @version 0.4
  */
 public class BDSMFlagCollector extends TeamClient {
 	HashMap <UUID, Ship> asteroidToShipMap;
@@ -80,21 +79,16 @@ public class BDSMFlagCollector extends TeamClient {
 				if(base.getTeamName().equalsIgnoreCase(getTeamName()) && base.getPosition().getX() < 800 )
 				{
 					baseIsLeft = true;
-					//System.out.println("<OUR BASE> - is LEFT!!!");
+					System.out.println("<OUR BASE> - is LEFT!!!");
 					positionList = new LinkedList<Position>();
-					positionList = new LinkedList<Position>();
-					positionList.add(new Position(300,200));
-					positionList.add(new Position(400,500));
-					positionList.add(new Position(300,700));
+					positionList.add(new Position(1450,300));
+					positionList.add(new Position(1300,900));
+					positionList.add(new Position(1450,500));
 				}
 				if(base.getTeamName().equalsIgnoreCase(getTeamName()) && base.getPosition().getX() > 800 )
 				{
 					baseIsRight = true;
-					//System.out.println("<OUR BASE> - is Right!!!");
-					positionList = new LinkedList<Position>();
-					positionList.add(new Position(1500,300));
-					positionList.add(new Position(1300,400));
-					positionList.add(new Position(1450,500));
+					System.out.println("<OUR BASE> - is Right!!!");
 				}
 			}
 			checkBaseLocation = false;
@@ -121,8 +115,8 @@ public class BDSMFlagCollector extends TeamClient {
 		if(replan) {
 			for(Ship s: ships) {
 				// Plan
-				BDSM_P4_Planner planner = new BDSM_P4_Planner(space, actionableObjects, s, BDSM_P4_ShipRole.ResourceBoy);
-				BDSM_P4_Actions highLevelAction = planner.getNextAction(space, s);
+				BDSM_MultiAgentPlanner planner = new BDSM_MultiAgentPlanner(space, actionableObjects, s, BDSM_ShipRole.ResourceBoy);
+				BDSM_PlanActions highLevelAction = planner.getNextAction();
 				
 				// Parse _Actions member
 				switch(highLevelAction) {

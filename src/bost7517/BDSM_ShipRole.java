@@ -1,5 +1,5 @@
 package bost7517;
 
-public enum BDSM_P4_ShipRole {
+public enum BDSM_ShipRole {
 	ResourceBoy, FlagBoy;
 }

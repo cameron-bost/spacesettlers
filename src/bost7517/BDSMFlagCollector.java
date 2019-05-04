@@ -49,7 +49,7 @@ public class BDSMFlagCollector extends TeamClient {
 	HashMap	<UUID,AStarPath> aStarCurrentPath = null;
 	HashMap	<UUID,LinkedList<Position>> aStarPointsToVisit;
 	HashMap	<UUID,LinkedList<AStarPath>> aStarCurrentSearchTree;
-	
+	HashMap	<UUID,Position> guardingPositions;
 	private ArrayList<SpacewarGraphics> graphicsToAdd;
 	private LinkedList<Position> pointsToVisit;
 	private AStarPath currentPath = null;
@@ -61,8 +61,7 @@ public class BDSMFlagCollector extends TeamClient {
 	private boolean baseIsRight = false;
 	private Ship flagGuard1;
 	private Ship flagGuard2;
-	private Position guardPosition1 = new Position(1450,300);
-	private Position guardPosition2 = new Position(1300,900);
+	private LinkedList<Position> positionList;
 	public boolean noflagGuard1Base = true;
 	
 	/**
@@ -81,6 +80,10 @@ public class BDSMFlagCollector extends TeamClient {
 				{
 					baseIsLeft = true;
 					System.out.println("<OUR BASE> - is LEFT!!!");
+					positionList = new LinkedList<Position>();
+					positionList.add(new Position(1450,300));
+					positionList.add(new Position(1300,900));
+					positionList.add(new Position(1450,500));
 				}
 				if(base.getTeamName().equalsIgnoreCase(getTeamName()) && base.getPosition().getX() > 800 )
 				{
@@ -140,6 +143,11 @@ public class BDSMFlagCollector extends TeamClient {
 				case DoNothing:
 					actions.put(s.getId(), DoNothing(space, s));
 					break;
+					
+				case Guard:
+					actions.put(s.getId(), Guard(space, s));
+					break;
+					
 				// Yikes don't want to be here.
 				default:
 					
@@ -287,7 +295,36 @@ public class BDSMFlagCollector extends TeamClient {
 		} 
 		return actions;*/
 	}
-
+	
+	//Do Guarding case.
+	private AbstractAction Guard(Toroidal2DPhysics space, Ship s) 
+	{
+		AbstractAction	action = null;
+		//If ship is not guarding and needs to be give it the next location in the list and remove it from the list
+		if(guardingPositions.get(s) == null)
+		{
+			Position temp = positionList.poll();
+			guardingPositions.put(s.getId(),temp);
+			positionList.offerLast(temp);
+		}
+		
+		//Need to check if we are near base
+		double distanceFromSpot = space.findShortestDistance(flagGuard1.getPosition(),guardingPositions.get(s.getId()));
+		
+		//distance is greater than 100 return back to base.
+		//Not a* due to the fact it only deals with objects
+		if(distanceFromSpot > 100)
+		{
+			action = new BDSMMoveAction(space, s.getPosition(), guardingPositions.get(s.getId()));
+		}
+		else
+		{
+			action = new DoNothingAction();
+		}
+		
+		return action;
+	}
+	
 	//Do nothing case.
 	private AbstractAction DoNothing(Toroidal2DPhysics space, Ship s) 
 	{

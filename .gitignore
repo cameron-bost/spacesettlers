@@ -1,7 +1,4 @@
 build
 dist/*.jar
-.classpath
-.project
-.*
 !**/.gitignore
 bin/
